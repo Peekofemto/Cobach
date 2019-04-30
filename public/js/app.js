@@ -1905,52 +1905,119 @@ __webpack_require__.r(__webpack_exports__);
 //
 //
 //
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
 /* harmony default export */ __webpack_exports__["default"] = ({
   data: function data() {
     return {
+      alumno_id: 0,
       nombre: '',
-      semestre: '',
+      numero_control: '',
+      email: '',
       arrayAlumno: [],
       modal: 0,
       tituloModal: '',
-      tipoAccion: 0
+      tipoAccion: 0,
+      errorAlumno: 0,
+      errorMostrarMsjAlumno: [],
+      pagination: {
+        'total': 0,
+        'current_page': 0,
+        'per_page': 0,
+        'last_page': 0,
+        'from': 0,
+        'to': 0
+      },
+      offset: 3,
+      criterio: 'nombre',
+      buscar: ''
     };
   },
+  computed: {
+    isActived: function isActived() {
+      return this.pagination.current_page;
+    },
+    //Calcula los elementos de la paginacion
+    pagesNumber: function pagesNumber() {
+      if (!this.pagination.to) {
+        return [];
+      }
+
+      var from = this.pagination.current_page - this.offset;
+
+      if (from < 1) {
+        from = 1;
+      }
+
+      var to = from + this.offset * 2;
+
+      if (to >= this.pagination.last_page) {
+        to = this.pagination.last_page;
+      }
+
+      var pagesArray = [];
+
+      while (from <= to) {
+        pagesArray.push(from);
+        from++;
+      }
+
+      return pagesArray;
+    }
+  },
   methods: {
-    //'categoria' es la route que nos regresa las categorias
-    listarAlumno: function listarAlumno() {
+    listarAlumno: function listarAlumno(page, buscar, criterio) {
+      //'alumno' es la route que nos regresa los alumnos
       var me = this;
-      axios.get('/alumno').then(function (response) {
+      var url = '/alumno?page=' + page + '&buscar=' + buscar + '&criterio=' + criterio;
+      axios.get(url).then(function (response) {
         // handle success
-        me.arrayAlumno = response.data;
+        var respuesta = response.data;
+        me.arrayAlumno = respuesta.alumnos.data;
+        me.pagination = respuesta.pagination;
         console.log(response);
       }).catch(function (error) {
         // handle error
         console.log(error);
       });
     },
+    cambiarPagina: function cambiarPagina(page, buscar, criterio) {
+      var me = this; //Actualiza la pagina actual
+
+      me.pagination.current_page = page; //Envia la peticion para visualizar la data de esa pagina
+
+      me.listarAlumno(page, buscar, criterio);
+    },
     registrarAlumno: function registrarAlumno() {
-      var me = this; //esta ruta hace referencia a la funcion store del CategoriaController
+      if (this.validarAlumno()) {
+        return;
+      }
+
+      var me = this; //esta ruta hace referencia a la funcion store del AlumnoController
 
       axios.post('/alumno/registrar', {
+        'numero_control': this.numero_control,
         'nombre': this.nombre,
-        'semestre': this.semestre
+        'email': this.email
       }).then(function (response) {
         me.cerrarModal();
-        me.listarAlumno();
+        me.listarAlumno(1, '', 'nombre');
+      }).catch(function (error) {
+        console.log(error);
+      });
+    },
+    actualizarAlumno: function actualizarAlumno() {
+      if (this.validarAlumno()) {
+        return;
+      }
+
+      var me = this;
+      axios.put('/alumno/actualizar', {
+        'numero_control': this.numero_control,
+        'nombre': this.nombre,
+        'email': this.email,
+        'id': this.alumno_id
+      }).then(function (response) {
+        me.cerrarModal();
+        me.listarAlumno(1, '', 'nombre');
       }).catch(function (error) {
         console.log(error);
       });
@@ -1958,8 +2025,81 @@ __webpack_require__.r(__webpack_exports__);
     cerrarModal: function cerrarModal() {
       this.modal = 0;
       this.tituloModal = '';
+      this.numero_control = '';
       this.nombre = '';
-      this.descripcion = '';
+      this.email = '';
+    },
+    desactivarAlumno: function desactivarAlumno(id) {
+      var _this = this;
+
+      var swalWithBootstrapButtons = Swal.mixin({
+        customClass: {
+          confirmButton: 'btn btn-success',
+          cancelButton: 'btn btn-danger'
+        },
+        buttonsStyling: false
+      });
+      swalWithBootstrapButtons.fire({
+        title: 'Estás seguro que quieres desactivar este registro?',
+        type: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Aceptar',
+        cancelButtonText: 'Cancelar',
+        reverseButtons: true
+      }).then(function (result) {
+        if (result.value) {
+          var me = _this;
+          axios.put('/alumno/desactivar', {
+            'id': id
+          }).then(function (response) {
+            me.listarAlumno(1, '', 'nombre');
+            swalWithBootstrapButtons.fire('Desactivado!', 'El registro ha sido desactivado con éxito.', 'success');
+          }).catch(function (error) {
+            console.log(error);
+          });
+        } else if ( // Read more about handling dismissals
+        result.dismiss === Swal.DismissReason.cancel) {}
+      });
+    },
+    activarAlumno: function activarAlumno(id) {
+      var _this2 = this;
+
+      var swalWithBootstrapButtons = Swal.mixin({
+        customClass: {
+          confirmButton: 'btn btn-success',
+          cancelButton: 'btn btn-danger'
+        },
+        buttonsStyling: false
+      });
+      swalWithBootstrapButtons.fire({
+        title: 'Estás seguro que quieres activar este registro?',
+        type: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Aceptar',
+        cancelButtonText: 'Cancelar',
+        reverseButtons: true
+      }).then(function (result) {
+        if (result.value) {
+          var me = _this2;
+          axios.put('/alumno/activar', {
+            'id': id
+          }).then(function (response) {
+            me.listarAlumno(1, '', 'nombre');
+            swalWithBootstrapButtons.fire('Activado!', 'El registro ha sido activado con éxito.', 'success');
+          }).catch(function (error) {
+            console.log(error);
+          });
+        } else if ( // Read more about handling dismissals
+        result.dismiss === Swal.DismissReason.cancel) {}
+      });
+    },
+    validarAlumno: function validarAlumno() {
+      this.errorAlumno = 0;
+      this.errorMostrarMsjAlumno = []; //Si el nombre esta vacio pushamos el mensaje de error
+
+      if (!this.nombre) this.errorMostrarMsjAlumno.push("El nombre de la categoría no puedo estar vacio.");
+      if (this.errorMostrarMsjAlumno.length) this.errorAlumno = 1;
+      return this.errorAlumno;
     },
     abrirModal: function abrirModal(modelo, accion) {
       var data = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : [];
@@ -1972,21 +2112,501 @@ __webpack_require__.r(__webpack_exports__);
                 {
                   this.modal = 1;
                   this.tituloModal = 'Registrar Alumno';
+                  this.numero_control = '';
                   this.nombre = '';
-                  this.semestre = '';
+                  this.email = '';
                   this.tipoAccion = 1;
                   break;
                 }
 
               case 'actualizar':
-                {}
+                {
+                  //console.log(data);
+                  this.modal = 1;
+                  this.tituloModal = 'Actualizar categoría';
+                  this.tipoAccion = 2;
+                  this.alumno_id = data['id'];
+                  this.numero_control = data['numero_control'];
+                  this.nombre = data['nombre'];
+                  this.email = data['email'];
+                  break;
+                }
             }
           }
       }
     }
   },
   mounted: function mounted() {
-    this.listarAlumno();
+    this.listarAlumno(1, this.buscar, this.criterio);
+  }
+});
+
+/***/ }),
+
+/***/ "./node_modules/babel-loader/lib/index.js?!./node_modules/vue-loader/lib/index.js?!./resources/js/components/Articulo.vue?vue&type=script&lang=js&":
+/*!*******************************************************************************************************************************************************************!*\
+  !*** ./node_modules/babel-loader/lib??ref--4-0!./node_modules/vue-loader/lib??vue-loader-options!./resources/js/components/Articulo.vue?vue&type=script&lang=js& ***!
+  \*******************************************************************************************************************************************************************/
+/*! exports provided: default */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony import */ var vue_barcode__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! vue-barcode */ "./node_modules/vue-barcode/index.js");
+/* harmony import */ var vue_barcode__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(vue_barcode__WEBPACK_IMPORTED_MODULE_0__);
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+
+/* harmony default export */ __webpack_exports__["default"] = ({
+  data: function data() {
+    return {
+      articulo_id: 0,
+      idcategoria: 0,
+      nombre_categoria: '',
+      codigo: '',
+      nombre: '',
+      precio_venta: 0,
+      stock: 0,
+      descripcion: '',
+      arrayArticulo: [],
+      modal: 0,
+      tituloModal: '',
+      tipoAccion: 0,
+      errorArticulo: 0,
+      errorMostrarMsjArticulo: [],
+      pagination: {
+        'total': 0,
+        'current_page': 0,
+        'per_page': 0,
+        'last_page': 0,
+        'from': 0,
+        'to': 0
+      },
+      offset: 3,
+      criterio: 'nombre',
+      buscar: '',
+      arrayCategoria: []
+    };
+  },
+  components: {
+    'barcode': vue_barcode__WEBPACK_IMPORTED_MODULE_0___default.a
+  },
+  computed: {
+    isActived: function isActived() {
+      return this.pagination.current_page;
+    },
+    //Calcula los elementos de la paginacion
+    pagesNumber: function pagesNumber() {
+      if (!this.pagination.to) {
+        return [];
+      }
+
+      var from = this.pagination.current_page - this.offset;
+
+      if (from < 1) {
+        from = 1;
+      }
+
+      var to = from + this.offset * 2;
+
+      if (to >= this.pagination.last_page) {
+        to = this.pagination.last_page;
+      }
+
+      var pagesArray = [];
+
+      while (from <= to) {
+        pagesArray.push(from);
+        from++;
+      }
+
+      return pagesArray;
+    }
+  },
+  methods: {
+    listarArticulo: function listarArticulo(page, buscar, criterio) {
+      //'categoria' es la route que nos regresa las categorias
+      var me = this;
+      var url = '/articulo?page=' + page + '&buscar=' + buscar + '&criterio=' + criterio;
+      axios.get(url).then(function (response) {
+        // handle success
+        var respuesta = response.data;
+        me.arrayArticulo = respuesta.articulos.data;
+        me.pagination = respuesta.pagination;
+        console.log(response);
+      }).catch(function (error) {
+        // handle error
+        console.log(error);
+      });
+    },
+    selectCategoria: function selectCategoria() {
+      var me = this;
+      var url = '/categoria/selectCategoria';
+      axios.get(url).then(function (response) {
+        // handle success
+        var respuesta = response.data;
+        me.arrayCategoria = respuesta.categorias; //console.log(response);
+      }).catch(function (error) {
+        // handle error
+        console.log(error);
+      });
+    },
+    cambiarPagina: function cambiarPagina(page, buscar, criterio) {
+      var me = this; //Actualiza la pagina actual
+
+      me.pagination.current_page = page; //Envia la peticion para visualizar la data de esa pagina
+
+      me.listarArticulo(page, buscar, criterio);
+    },
+    registrarArticulo: function registrarArticulo() {
+      if (this.validarArticulo()) {
+        return;
+      }
+
+      var me = this; //esta ruta hace referencia a la funcion store del CategoriaController
+
+      axios.post('/articulo/registrar', {
+        'idcategoria': this.idcategoria,
+        'codigo': this.codigo,
+        'nombre': this.nombre,
+        'stock': this.stock,
+        'precio_venta': this.precio_venta,
+        'descripcion': this.descripcion
+      }).then(function (response) {
+        me.cerrarModal();
+        me.listarArticulo(1, '', 'nombre');
+      }).catch(function (error) {
+        console.log(error);
+      });
+    },
+    actualizarArticulo: function actualizarArticulo() {
+      if (this.validarArticulo()) {
+        return;
+      }
+
+      var me = this;
+      axios.put('/articulo/actualizar', {
+        'idcategoria': this.idcategoria,
+        'codigo': this.codigo,
+        'nombre': this.nombre,
+        'stock': this.stock,
+        'precio_venta': this.precio_venta,
+        'descripcion': this.descripcion,
+        'id': this.articulo_id
+      }).then(function (response) {
+        me.cerrarModal();
+        me.listarArticulo(1, '', 'nombre');
+      }).catch(function (error) {
+        console.log(error);
+      });
+    },
+    cerrarModal: function cerrarModal() {
+      this.modal = 0;
+      this.tituloModal = '';
+      this.idcategoria = 0;
+      this.nombre_categoria = '';
+      this.codigo = '';
+      this.nombre = '';
+      this.precio_venta = 0;
+      this.stock = 0;
+      this.descripcion = '';
+      this.errorArticulo = 0;
+    },
+    desactivarArticulo: function desactivarArticulo(id) {
+      var _this = this;
+
+      var swalWithBootstrapButtons = Swal.mixin({
+        customClass: {
+          confirmButton: 'btn btn-success',
+          cancelButton: 'btn btn-danger'
+        },
+        buttonsStyling: false
+      });
+      swalWithBootstrapButtons.fire({
+        title: 'Estás seguro que quieres desactivar este articulo?',
+        type: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Aceptar',
+        cancelButtonText: 'Cancelar',
+        reverseButtons: true
+      }).then(function (result) {
+        if (result.value) {
+          var me = _this;
+          axios.put('/articulo/desactivar', {
+            'id': id
+          }).then(function (response) {
+            me.listarArticulo(1, '', 'nombre');
+            swalWithBootstrapButtons.fire('Desactivado!', 'El registro ha sido desactivado con éxito.', 'success');
+          }).catch(function (error) {
+            console.log(error);
+          });
+        } else if ( // Read more about handling dismissals
+        result.dismiss === Swal.DismissReason.cancel) {}
+      });
+    },
+    activarArticulo: function activarArticulo(id) {
+      var _this2 = this;
+
+      var swalWithBootstrapButtons = Swal.mixin({
+        customClass: {
+          confirmButton: 'btn btn-success',
+          cancelButton: 'btn btn-danger'
+        },
+        buttonsStyling: false
+      });
+      swalWithBootstrapButtons.fire({
+        title: 'Estás seguro que quieres activar este registro?',
+        type: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Aceptar',
+        cancelButtonText: 'Cancelar',
+        reverseButtons: true
+      }).then(function (result) {
+        if (result.value) {
+          var me = _this2;
+          axios.put('/articulo/activar', {
+            'id': id
+          }).then(function (response) {
+            me.listarArticulo(1, '', 'nombre');
+            swalWithBootstrapButtons.fire('Activado!', 'El registro ha sido activado con éxito.', 'success');
+          }).catch(function (error) {
+            console.log(error);
+          });
+        } else if ( // Read more about handling dismissals
+        result.dismiss === Swal.DismissReason.cancel) {}
+      });
+    },
+    validarArticulo: function validarArticulo() {
+      this.errorArticulo = 0;
+      this.errorMostrarMsjArticulo = []; //Si no se selcciona una categoria nos tira el error
+
+      if (this.idcategoria == 0) this.errorMostrarMsjArticulo.push("Seleccione una categoria"); //Si el nombre esta vacio pushamos el mensaje de error
+
+      if (!this.nombre) this.errorMostrarMsjArticulo.push("El nombre de la articulo no puedo estar vacio.");
+      if (!this.stock) this.errorMostrarMsjArticulo.push("El stock del articulo debe der ser número y no puede estar vacio");
+      if (!this.precio_venta) this.errorMostrarMsjArticulo.push("El precio de venta del articulo debe ser un número y no debe estar vacio");
+      if (this.errorMostrarMsjArticulo.length) this.errorArticulo = 1;
+      return this.errorArticulo;
+    },
+    abrirModal: function abrirModal(modelo, accion) {
+      var data = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : [];
+
+      switch (modelo) {
+        case "articulo":
+          {
+            switch (accion) {
+              case 'registrar':
+                {
+                  this.modal = 1;
+                  this.tituloModal = 'Registrar Articulo';
+                  this.idcategoria = 0;
+                  this.nombre_categoria = '';
+                  this.codigo = '';
+                  this.nombre = '';
+                  this.precio_venta = 0;
+                  this.stock = 0;
+                  this.descripcion = '';
+                  this.tipoAccion = 1;
+                  break;
+                }
+
+              case 'actualizar':
+                {
+                  //console.log(data);
+                  this.modal = 1;
+                  this.tituloModal = 'Actualizar Articulo';
+                  this.tipoAccion = 2;
+                  this.articulo_id = data['id'];
+                  this.idcategoria = data['idcategoria'];
+                  this.codigo = data['codigo'];
+                  this.nombre = data['nombre'];
+                  this.stock = data['stock'];
+                  this.precio_venta = data['precio_venta'];
+                  this.descripcion = data['descripcion'];
+                  break;
+                }
+            }
+          }
+      }
+
+      this.selectCategoria();
+    }
+  },
+  mounted: function mounted() {
+    this.listarArticulo(1, this.buscar, this.criterio);
   }
 });
 
@@ -2000,17 +2620,17 @@ __webpack_require__.r(__webpack_exports__);
 /***/ (function(module, exports, __webpack_require__) {
 
 /*!
-  * Bootstrap v4.3.1 (https://getbootstrap.com/)
-  * Copyright 2011-2019 The Bootstrap Authors (https://github.com/twbs/bootstrap/graphs/contributors)
+  * Bootstrap v4.2.1 (https://getbootstrap.com/)
+  * Copyright 2011-2018 The Bootstrap Authors (https://github.com/twbs/bootstrap/graphs/contributors)
   * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
   */
 (function (global, factory) {
-   true ? factory(exports, __webpack_require__(/*! jquery */ "./node_modules/jquery/dist/jquery.js"), __webpack_require__(/*! popper.js */ "./node_modules/popper.js/dist/esm/popper.js")) :
+   true ? factory(exports, __webpack_require__(/*! popper.js */ "./node_modules/popper.js/dist/esm/popper.js"), __webpack_require__(/*! jquery */ "./node_modules/jquery/dist/jquery.js")) :
   undefined;
-}(this, function (exports, $, Popper) { 'use strict';
+}(this, (function (exports,Popper,$) { 'use strict';
 
-  $ = $ && $.hasOwnProperty('default') ? $['default'] : $;
   Popper = Popper && Popper.hasOwnProperty('default') ? Popper['default'] : Popper;
+  $ = $ && $.hasOwnProperty('default') ? $['default'] : $;
 
   function _defineProperties(target, props) {
     for (var i = 0; i < props.length; i++) {
@@ -2070,7 +2690,7 @@ __webpack_require__.r(__webpack_exports__);
 
   /**
    * --------------------------------------------------------------------------
-   * Bootstrap (v4.3.1): util.js
+   * Bootstrap (v4.2.1): util.js
    * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
    * --------------------------------------------------------------------------
    */
@@ -2146,11 +2766,7 @@ __webpack_require__.r(__webpack_exports__);
         selector = hrefAttr && hrefAttr !== '#' ? hrefAttr.trim() : '';
       }
 
-      try {
-        return document.querySelector(selector) ? selector : null;
-      } catch (err) {
-        return null;
-      }
+      return selector && document.querySelector(selector) ? selector : null;
     },
     getTransitionDurationFromElement: function getTransitionDurationFromElement(element) {
       if (!element) {
@@ -2230,7 +2846,7 @@ __webpack_require__.r(__webpack_exports__);
    */
 
   var NAME = 'alert';
-  var VERSION = '4.3.1';
+  var VERSION = '4.2.1';
   var DATA_KEY = 'bs.alert';
   var EVENT_KEY = "." + DATA_KEY;
   var DATA_API_KEY = '.data-api';
@@ -2285,8 +2901,8 @@ __webpack_require__.r(__webpack_exports__);
     _proto.dispose = function dispose() {
       $.removeData(this._element, DATA_KEY);
       this._element = null;
-    } // Private
-    ;
+    }; // Private
+
 
     _proto._getRootElement = function _getRootElement(element) {
       var selector = Util.getSelectorFromElement(element);
@@ -2328,8 +2944,8 @@ __webpack_require__.r(__webpack_exports__);
 
     _proto._destroyElement = function _destroyElement(element) {
       $(element).detach().trigger(Event.CLOSED).remove();
-    } // Static
-    ;
+    }; // Static
+
 
     Alert._jQueryInterface = function _jQueryInterface(config) {
       return this.each(function () {
@@ -2395,7 +3011,7 @@ __webpack_require__.r(__webpack_exports__);
    */
 
   var NAME$1 = 'button';
-  var VERSION$1 = '4.3.1';
+  var VERSION$1 = '4.2.1';
   var DATA_KEY$1 = 'bs.button';
   var EVENT_KEY$1 = "." + DATA_KEY$1;
   var DATA_API_KEY$1 = '.data-api';
@@ -2481,8 +3097,8 @@ __webpack_require__.r(__webpack_exports__);
     _proto.dispose = function dispose() {
       $.removeData(this._element, DATA_KEY$1);
       this._element = null;
-    } // Static
-    ;
+    }; // Static
+
 
     Button._jQueryInterface = function _jQueryInterface(config) {
       return this.each(function () {
@@ -2549,7 +3165,7 @@ __webpack_require__.r(__webpack_exports__);
    */
 
   var NAME$2 = 'carousel';
-  var VERSION$2 = '4.3.1';
+  var VERSION$2 = '4.2.1';
   var DATA_KEY$2 = 'bs.carousel';
   var EVENT_KEY$2 = "." + DATA_KEY$2;
   var DATA_API_KEY$2 = '.data-api';
@@ -2744,8 +3360,8 @@ __webpack_require__.r(__webpack_exports__);
       this._isSliding = null;
       this._activeElement = null;
       this._indicatorsElement = null;
-    } // Private
-    ;
+    }; // Private
+
 
     _proto._getConfig = function _getConfig(config) {
       config = _objectSpread({}, Default, config);
@@ -2789,9 +3405,7 @@ __webpack_require__.r(__webpack_exports__);
         });
       }
 
-      if (this._config.touch) {
-        this._addTouchEventListeners();
-      }
+      this._addTouchEventListeners();
     };
 
     _proto._addTouchEventListeners = function _addTouchEventListeners() {
@@ -3032,8 +3646,8 @@ __webpack_require__.r(__webpack_exports__);
       if (isCycling) {
         this.cycle();
       }
-    } // Static
-    ;
+    }; // Static
+
 
     Carousel._jQueryInterface = function _jQueryInterface(config) {
       return this.each(function () {
@@ -3060,7 +3674,7 @@ __webpack_require__.r(__webpack_exports__);
           }
 
           data[action]();
-        } else if (_config.interval && _config.ride) {
+        } else if (_config.interval) {
           data.pause();
           data.cycle();
         }
@@ -3149,7 +3763,7 @@ __webpack_require__.r(__webpack_exports__);
    */
 
   var NAME$3 = 'collapse';
-  var VERSION$3 = '4.3.1';
+  var VERSION$3 = '4.2.1';
   var DATA_KEY$3 = 'bs.collapse';
   var EVENT_KEY$3 = "." + DATA_KEY$3;
   var DATA_API_KEY$3 = '.data-api';
@@ -3371,8 +3985,8 @@ __webpack_require__.r(__webpack_exports__);
       this._element = null;
       this._triggerArray = null;
       this._isTransitioning = null;
-    } // Private
-    ;
+    }; // Private
+
 
     _proto._getConfig = function _getConfig(config) {
       config = _objectSpread({}, Default$1, config);
@@ -3416,8 +4030,8 @@ __webpack_require__.r(__webpack_exports__);
       if (triggerArray.length) {
         $(triggerArray).toggleClass(ClassName$3.COLLAPSED, !isOpen).attr('aria-expanded', isOpen);
       }
-    } // Static
-    ;
+    }; // Static
+
 
     Collapse._getTargetFromElement = function _getTargetFromElement(element) {
       var selector = Util.getSelectorFromElement(element);
@@ -3509,7 +4123,7 @@ __webpack_require__.r(__webpack_exports__);
    */
 
   var NAME$4 = 'dropdown';
-  var VERSION$4 = '4.3.1';
+  var VERSION$4 = '4.2.1';
   var DATA_KEY$4 = 'bs.dropdown';
   var EVENT_KEY$4 = "." + DATA_KEY$4;
   var DATA_API_KEY$4 = '.data-api';
@@ -3738,8 +4352,8 @@ __webpack_require__.r(__webpack_exports__);
       if (this._popper !== null) {
         this._popper.scheduleUpdate();
       }
-    } // Private
-    ;
+    }; // Private
+
 
     _proto._addEventListeners = function _addEventListeners() {
       var _this = this;
@@ -3795,28 +4409,24 @@ __webpack_require__.r(__webpack_exports__);
       return $(this._element).closest('.navbar').length > 0;
     };
 
-    _proto._getOffset = function _getOffset() {
+    _proto._getPopperConfig = function _getPopperConfig() {
       var _this2 = this;
 
-      var offset = {};
+      var offsetConf = {};
 
       if (typeof this._config.offset === 'function') {
-        offset.fn = function (data) {
-          data.offsets = _objectSpread({}, data.offsets, _this2._config.offset(data.offsets, _this2._element) || {});
+        offsetConf.fn = function (data) {
+          data.offsets = _objectSpread({}, data.offsets, _this2._config.offset(data.offsets) || {});
           return data;
         };
       } else {
-        offset.offset = this._config.offset;
+        offsetConf.offset = this._config.offset;
       }
 
-      return offset;
-    };
-
-    _proto._getPopperConfig = function _getPopperConfig() {
       var popperConfig = {
         placement: this._getPlacement(),
         modifiers: {
-          offset: this._getOffset(),
+          offset: offsetConf,
           flip: {
             enabled: this._config.flip
           },
@@ -3834,8 +4444,8 @@ __webpack_require__.r(__webpack_exports__);
       }
 
       return popperConfig;
-    } // Static
-    ;
+    }; // Static
+
 
     Dropdown._jQueryInterface = function _jQueryInterface(config) {
       return this.each(function () {
@@ -3919,8 +4529,8 @@ __webpack_require__.r(__webpack_exports__);
       }
 
       return parent || element.parentNode;
-    } // eslint-disable-next-line complexity
-    ;
+    }; // eslint-disable-next-line complexity
+
 
     Dropdown._dataApiKeydownHandler = function _dataApiKeydownHandler(event) {
       // If not input/textarea:
@@ -4035,7 +4645,7 @@ __webpack_require__.r(__webpack_exports__);
    */
 
   var NAME$5 = 'modal';
-  var VERSION$5 = '4.3.1';
+  var VERSION$5 = '4.2.1';
   var DATA_KEY$5 = 'bs.modal';
   var EVENT_KEY$5 = "." + DATA_KEY$5;
   var DATA_API_KEY$5 = '.data-api';
@@ -4068,7 +4678,6 @@ __webpack_require__.r(__webpack_exports__);
     CLICK_DATA_API: "click" + EVENT_KEY$5 + DATA_API_KEY$5
   };
   var ClassName$5 = {
-    SCROLLABLE: 'modal-dialog-scrollable',
     SCROLLBAR_MEASURER: 'modal-scrollbar-measure',
     BACKDROP: 'modal-backdrop',
     OPEN: 'modal-open',
@@ -4077,7 +4686,6 @@ __webpack_require__.r(__webpack_exports__);
   };
   var Selector$5 = {
     DIALOG: '.modal-dialog',
-    MODAL_BODY: '.modal-body',
     DATA_TOGGLE: '[data-toggle="modal"]',
     DATA_DISMISS: '[data-dismiss="modal"]',
     FIXED_CONTENT: '.fixed-top, .fixed-bottom, .is-fixed, .sticky-top',
@@ -4230,8 +4838,8 @@ __webpack_require__.r(__webpack_exports__);
 
     _proto.handleUpdate = function handleUpdate() {
       this._adjustDialog();
-    } // Private
-    ;
+    }; // Private
+
 
     _proto._getConfig = function _getConfig(config) {
       config = _objectSpread({}, Default$3, config);
@@ -4255,11 +4863,7 @@ __webpack_require__.r(__webpack_exports__);
 
       this._element.setAttribute('aria-modal', true);
 
-      if ($(this._dialog).hasClass(ClassName$5.SCROLLABLE)) {
-        this._dialog.querySelector(Selector$5.MODAL_BODY).scrollTop = 0;
-      } else {
-        this._element.scrollTop = 0;
-      }
+      this._element.scrollTop = 0;
 
       if (transition) {
         Util.reflow(this._element);
@@ -4429,11 +5033,11 @@ __webpack_require__.r(__webpack_exports__);
       } else if (callback) {
         callback();
       }
-    } // ----------------------------------------------------------------------
+    }; // ----------------------------------------------------------------------
     // the following methods are used to handle overflowing modals
     // todo (fat): these should probably be refactored out of modal.js
     // ----------------------------------------------------------------------
-    ;
+
 
     _proto._adjustDialog = function _adjustDialog() {
       var isModalOverflowing = this._element.scrollHeight > document.documentElement.clientHeight;
@@ -4518,8 +5122,8 @@ __webpack_require__.r(__webpack_exports__);
       var scrollbarWidth = scrollDiv.getBoundingClientRect().width - scrollDiv.clientWidth;
       document.body.removeChild(scrollDiv);
       return scrollbarWidth;
-    } // Static
-    ;
+    }; // Static
+
 
     Modal._jQueryInterface = function _jQueryInterface(config, relatedTarget) {
       return this.each(function () {
@@ -4611,140 +5215,18 @@ __webpack_require__.r(__webpack_exports__);
   };
 
   /**
-   * --------------------------------------------------------------------------
-   * Bootstrap (v4.3.1): tools/sanitizer.js
-   * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
-   * --------------------------------------------------------------------------
-   */
-  var uriAttrs = ['background', 'cite', 'href', 'itemtype', 'longdesc', 'poster', 'src', 'xlink:href'];
-  var ARIA_ATTRIBUTE_PATTERN = /^aria-[\w-]*$/i;
-  var DefaultWhitelist = {
-    // Global attributes allowed on any supplied element below.
-    '*': ['class', 'dir', 'id', 'lang', 'role', ARIA_ATTRIBUTE_PATTERN],
-    a: ['target', 'href', 'title', 'rel'],
-    area: [],
-    b: [],
-    br: [],
-    col: [],
-    code: [],
-    div: [],
-    em: [],
-    hr: [],
-    h1: [],
-    h2: [],
-    h3: [],
-    h4: [],
-    h5: [],
-    h6: [],
-    i: [],
-    img: ['src', 'alt', 'title', 'width', 'height'],
-    li: [],
-    ol: [],
-    p: [],
-    pre: [],
-    s: [],
-    small: [],
-    span: [],
-    sub: [],
-    sup: [],
-    strong: [],
-    u: [],
-    ul: []
-    /**
-     * A pattern that recognizes a commonly useful subset of URLs that are safe.
-     *
-     * Shoutout to Angular 7 https://github.com/angular/angular/blob/7.2.4/packages/core/src/sanitization/url_sanitizer.ts
-     */
-
-  };
-  var SAFE_URL_PATTERN = /^(?:(?:https?|mailto|ftp|tel|file):|[^&:/?#]*(?:[/?#]|$))/gi;
-  /**
-   * A pattern that matches safe data URLs. Only matches image, video and audio types.
-   *
-   * Shoutout to Angular 7 https://github.com/angular/angular/blob/7.2.4/packages/core/src/sanitization/url_sanitizer.ts
-   */
-
-  var DATA_URL_PATTERN = /^data:(?:image\/(?:bmp|gif|jpeg|jpg|png|tiff|webp)|video\/(?:mpeg|mp4|ogg|webm)|audio\/(?:mp3|oga|ogg|opus));base64,[a-z0-9+/]+=*$/i;
-
-  function allowedAttribute(attr, allowedAttributeList) {
-    var attrName = attr.nodeName.toLowerCase();
-
-    if (allowedAttributeList.indexOf(attrName) !== -1) {
-      if (uriAttrs.indexOf(attrName) !== -1) {
-        return Boolean(attr.nodeValue.match(SAFE_URL_PATTERN) || attr.nodeValue.match(DATA_URL_PATTERN));
-      }
-
-      return true;
-    }
-
-    var regExp = allowedAttributeList.filter(function (attrRegex) {
-      return attrRegex instanceof RegExp;
-    }); // Check if a regular expression validates the attribute.
-
-    for (var i = 0, l = regExp.length; i < l; i++) {
-      if (attrName.match(regExp[i])) {
-        return true;
-      }
-    }
-
-    return false;
-  }
-
-  function sanitizeHtml(unsafeHtml, whiteList, sanitizeFn) {
-    if (unsafeHtml.length === 0) {
-      return unsafeHtml;
-    }
-
-    if (sanitizeFn && typeof sanitizeFn === 'function') {
-      return sanitizeFn(unsafeHtml);
-    }
-
-    var domParser = new window.DOMParser();
-    var createdDocument = domParser.parseFromString(unsafeHtml, 'text/html');
-    var whitelistKeys = Object.keys(whiteList);
-    var elements = [].slice.call(createdDocument.body.querySelectorAll('*'));
-
-    var _loop = function _loop(i, len) {
-      var el = elements[i];
-      var elName = el.nodeName.toLowerCase();
-
-      if (whitelistKeys.indexOf(el.nodeName.toLowerCase()) === -1) {
-        el.parentNode.removeChild(el);
-        return "continue";
-      }
-
-      var attributeList = [].slice.call(el.attributes);
-      var whitelistedAttributes = [].concat(whiteList['*'] || [], whiteList[elName] || []);
-      attributeList.forEach(function (attr) {
-        if (!allowedAttribute(attr, whitelistedAttributes)) {
-          el.removeAttribute(attr.nodeName);
-        }
-      });
-    };
-
-    for (var i = 0, len = elements.length; i < len; i++) {
-      var _ret = _loop(i, len);
-
-      if (_ret === "continue") continue;
-    }
-
-    return createdDocument.body.innerHTML;
-  }
-
-  /**
    * ------------------------------------------------------------------------
    * Constants
    * ------------------------------------------------------------------------
    */
 
   var NAME$6 = 'tooltip';
-  var VERSION$6 = '4.3.1';
+  var VERSION$6 = '4.2.1';
   var DATA_KEY$6 = 'bs.tooltip';
   var EVENT_KEY$6 = "." + DATA_KEY$6;
   var JQUERY_NO_CONFLICT$6 = $.fn[NAME$6];
   var CLASS_PREFIX = 'bs-tooltip';
   var BSCLS_PREFIX_REGEX = new RegExp("(^|\\s)" + CLASS_PREFIX + "\\S+", 'g');
-  var DISALLOWED_ATTRIBUTES = ['sanitize', 'whiteList', 'sanitizeFn'];
   var DefaultType$4 = {
     animation: 'boolean',
     template: 'string',
@@ -4754,13 +5236,10 @@ __webpack_require__.r(__webpack_exports__);
     html: 'boolean',
     selector: '(string|boolean)',
     placement: '(string|function)',
-    offset: '(number|string|function)',
+    offset: '(number|string)',
     container: '(string|element|boolean)',
     fallbackPlacement: '(string|array)',
-    boundary: '(string|element)',
-    sanitize: 'boolean',
-    sanitizeFn: '(null|function)',
-    whiteList: 'object'
+    boundary: '(string|element)'
   };
   var AttachmentMap$1 = {
     AUTO: 'auto',
@@ -4781,10 +5260,7 @@ __webpack_require__.r(__webpack_exports__);
     offset: 0,
     container: false,
     fallbackPlacement: 'flip',
-    boundary: 'scrollParent',
-    sanitize: true,
-    sanitizeFn: null,
-    whiteList: DefaultWhitelist
+    boundary: 'scrollParent'
   };
   var HoverState = {
     SHOW: 'show',
@@ -4969,7 +5445,9 @@ __webpack_require__.r(__webpack_exports__);
         this._popper = new Popper(this.element, tip, {
           placement: attachment,
           modifiers: {
-            offset: this._getOffset(),
+            offset: {
+              offset: this.config.offset
+            },
             flip: {
               behavior: this.config.fallbackPlacement
             },
@@ -5078,8 +5556,8 @@ __webpack_require__.r(__webpack_exports__);
       if (this._popper !== null) {
         this._popper.scheduleUpdate();
       }
-    } // Protected
-    ;
+    }; // Protected
+
 
     _proto.isWithContent = function isWithContent() {
       return Boolean(this.getTitle());
@@ -5101,27 +5579,19 @@ __webpack_require__.r(__webpack_exports__);
     };
 
     _proto.setElementContent = function setElementContent($element, content) {
+      var html = this.config.html;
+
       if (typeof content === 'object' && (content.nodeType || content.jquery)) {
         // Content is a DOM node or a jQuery
-        if (this.config.html) {
+        if (html) {
           if (!$(content).parent().is($element)) {
             $element.empty().append(content);
           }
         } else {
           $element.text($(content).text());
         }
-
-        return;
-      }
-
-      if (this.config.html) {
-        if (this.config.sanitize) {
-          content = sanitizeHtml(content, this.config.whiteList, this.config.sanitizeFn);
-        }
-
-        $element.html(content);
       } else {
-        $element.text(content);
+        $element[html ? 'html' : 'text'](content);
       }
     };
 
@@ -5133,25 +5603,8 @@ __webpack_require__.r(__webpack_exports__);
       }
 
       return title;
-    } // Private
-    ;
+    }; // Private
 
-    _proto._getOffset = function _getOffset() {
-      var _this3 = this;
-
-      var offset = {};
-
-      if (typeof this.config.offset === 'function') {
-        offset.fn = function (data) {
-          data.offsets = _objectSpread({}, data.offsets, _this3.config.offset(data.offsets, _this3.element) || {});
-          return data;
-        };
-      } else {
-        offset.offset = this.config.offset;
-      }
-
-      return offset;
-    };
 
     _proto._getContainer = function _getContainer() {
       if (this.config.container === false) {
@@ -5170,27 +5623,27 @@ __webpack_require__.r(__webpack_exports__);
     };
 
     _proto._setListeners = function _setListeners() {
-      var _this4 = this;
+      var _this3 = this;
 
       var triggers = this.config.trigger.split(' ');
       triggers.forEach(function (trigger) {
         if (trigger === 'click') {
-          $(_this4.element).on(_this4.constructor.Event.CLICK, _this4.config.selector, function (event) {
-            return _this4.toggle(event);
+          $(_this3.element).on(_this3.constructor.Event.CLICK, _this3.config.selector, function (event) {
+            return _this3.toggle(event);
           });
         } else if (trigger !== Trigger.MANUAL) {
-          var eventIn = trigger === Trigger.HOVER ? _this4.constructor.Event.MOUSEENTER : _this4.constructor.Event.FOCUSIN;
-          var eventOut = trigger === Trigger.HOVER ? _this4.constructor.Event.MOUSELEAVE : _this4.constructor.Event.FOCUSOUT;
-          $(_this4.element).on(eventIn, _this4.config.selector, function (event) {
-            return _this4._enter(event);
-          }).on(eventOut, _this4.config.selector, function (event) {
-            return _this4._leave(event);
+          var eventIn = trigger === Trigger.HOVER ? _this3.constructor.Event.MOUSEENTER : _this3.constructor.Event.FOCUSIN;
+          var eventOut = trigger === Trigger.HOVER ? _this3.constructor.Event.MOUSELEAVE : _this3.constructor.Event.FOCUSOUT;
+          $(_this3.element).on(eventIn, _this3.config.selector, function (event) {
+            return _this3._enter(event);
+          }).on(eventOut, _this3.config.selector, function (event) {
+            return _this3._leave(event);
           });
         }
       });
       $(this.element).closest('.modal').on('hide.bs.modal', function () {
-        if (_this4.element) {
-          _this4.hide();
+        if (_this3.element) {
+          _this3.hide();
         }
       });
 
@@ -5289,13 +5742,7 @@ __webpack_require__.r(__webpack_exports__);
     };
 
     _proto._getConfig = function _getConfig(config) {
-      var dataAttributes = $(this.element).data();
-      Object.keys(dataAttributes).forEach(function (dataAttr) {
-        if (DISALLOWED_ATTRIBUTES.indexOf(dataAttr) !== -1) {
-          delete dataAttributes[dataAttr];
-        }
-      });
-      config = _objectSpread({}, this.constructor.Default, dataAttributes, typeof config === 'object' && config ? config : {});
+      config = _objectSpread({}, this.constructor.Default, $(this.element).data(), typeof config === 'object' && config ? config : {});
 
       if (typeof config.delay === 'number') {
         config.delay = {
@@ -5313,11 +5760,6 @@ __webpack_require__.r(__webpack_exports__);
       }
 
       Util.typeCheckConfig(NAME$6, config, this.constructor.DefaultType);
-
-      if (config.sanitize) {
-        config.template = sanitizeHtml(config.template, config.whiteList, config.sanitizeFn);
-      }
-
       return config;
     };
 
@@ -5366,8 +5808,8 @@ __webpack_require__.r(__webpack_exports__);
       this.hide();
       this.show();
       this.config.animation = initConfigAnimation;
-    } // Static
-    ;
+    }; // Static
+
 
     Tooltip._jQueryInterface = function _jQueryInterface(config) {
       return this.each(function () {
@@ -5455,7 +5897,7 @@ __webpack_require__.r(__webpack_exports__);
    */
 
   var NAME$7 = 'popover';
-  var VERSION$7 = '4.3.1';
+  var VERSION$7 = '4.2.1';
   var DATA_KEY$7 = 'bs.popover';
   var EVENT_KEY$7 = "." + DATA_KEY$7;
   var JQUERY_NO_CONFLICT$7 = $.fn[NAME$7];
@@ -5538,8 +5980,8 @@ __webpack_require__.r(__webpack_exports__);
 
       this.setElementContent($tip.find(Selector$7.CONTENT), content);
       $tip.removeClass(ClassName$7.FADE + " " + ClassName$7.SHOW);
-    } // Private
-    ;
+    }; // Private
+
 
     _proto._getContent = function _getContent() {
       return this.element.getAttribute('data-content') || this.config.content;
@@ -5552,8 +5994,8 @@ __webpack_require__.r(__webpack_exports__);
       if (tabClass !== null && tabClass.length > 0) {
         $tip.removeClass(tabClass.join(''));
       }
-    } // Static
-    ;
+    }; // Static
+
 
     Popover._jQueryInterface = function _jQueryInterface(config) {
       return this.each(function () {
@@ -5642,7 +6084,7 @@ __webpack_require__.r(__webpack_exports__);
    */
 
   var NAME$8 = 'scrollspy';
-  var VERSION$8 = '4.3.1';
+  var VERSION$8 = '4.2.1';
   var DATA_KEY$8 = 'bs.scrollspy';
   var EVENT_KEY$8 = "." + DATA_KEY$8;
   var DATA_API_KEY$6 = '.data-api';
@@ -5765,8 +6207,8 @@ __webpack_require__.r(__webpack_exports__);
       this._targets = null;
       this._activeTarget = null;
       this._scrollHeight = null;
-    } // Private
-    ;
+    }; // Private
+
 
     _proto._getConfig = function _getConfig(config) {
       config = _objectSpread({}, Default$6, typeof config === 'object' && config ? config : {});
@@ -5873,8 +6315,8 @@ __webpack_require__.r(__webpack_exports__);
       }).forEach(function (node) {
         return node.classList.remove(ClassName$8.ACTIVE);
       });
-    } // Static
-    ;
+    }; // Static
+
 
     ScrollSpy._jQueryInterface = function _jQueryInterface(config) {
       return this.each(function () {
@@ -5949,7 +6391,7 @@ __webpack_require__.r(__webpack_exports__);
    */
 
   var NAME$9 = 'tab';
-  var VERSION$9 = '4.3.1';
+  var VERSION$9 = '4.2.1';
   var DATA_KEY$9 = 'bs.tab';
   var EVENT_KEY$9 = "." + DATA_KEY$9;
   var DATA_API_KEY$7 = '.data-api';
@@ -6057,8 +6499,8 @@ __webpack_require__.r(__webpack_exports__);
     _proto.dispose = function dispose() {
       $.removeData(this._element, DATA_KEY$9);
       this._element = null;
-    } // Private
-    ;
+    }; // Private
+
 
     _proto._activate = function _activate(element, container, callback) {
       var _this2 = this;
@@ -6100,10 +6542,7 @@ __webpack_require__.r(__webpack_exports__);
       }
 
       Util.reflow(element);
-
-      if (element.classList.contains(ClassName$9.FADE)) {
-        element.classList.add(ClassName$9.SHOW);
-      }
+      $(element).addClass(ClassName$9.SHOW);
 
       if (element.parentNode && $(element.parentNode).hasClass(ClassName$9.DROPDOWN_MENU)) {
         var dropdownElement = $(element).closest(Selector$9.DROPDOWN)[0];
@@ -6119,8 +6558,8 @@ __webpack_require__.r(__webpack_exports__);
       if (callback) {
         callback();
       }
-    } // Static
-    ;
+    }; // Static
+
 
     Tab._jQueryInterface = function _jQueryInterface(config) {
       return this.each(function () {
@@ -6184,7 +6623,7 @@ __webpack_require__.r(__webpack_exports__);
    */
 
   var NAME$a = 'toast';
-  var VERSION$a = '4.3.1';
+  var VERSION$a = '4.2.1';
   var DATA_KEY$a = 'bs.toast';
   var EVENT_KEY$a = "." + DATA_KEY$a;
   var JQUERY_NO_CONFLICT$a = $.fn[NAME$a];
@@ -6299,8 +6738,8 @@ __webpack_require__.r(__webpack_exports__);
       $.removeData(this._element, DATA_KEY$a);
       this._element = null;
       this._config = null;
-    } // Private
-    ;
+    }; // Private
+
 
     _proto._getConfig = function _getConfig(config) {
       config = _objectSpread({}, Default$7, $(this._element).data(), typeof config === 'object' && config ? config : {});
@@ -6333,8 +6772,8 @@ __webpack_require__.r(__webpack_exports__);
       } else {
         complete();
       }
-    } // Static
-    ;
+    }; // Static
+
 
     Toast._jQueryInterface = function _jQueryInterface(config) {
       return this.each(function () {
@@ -6368,11 +6807,6 @@ __webpack_require__.r(__webpack_exports__);
       get: function get() {
         return DefaultType$7;
       }
-    }, {
-      key: "Default",
-      get: function get() {
-        return Default$7;
-      }
     }]);
 
     return Toast;
@@ -6394,7 +6828,7 @@ __webpack_require__.r(__webpack_exports__);
 
   /**
    * --------------------------------------------------------------------------
-   * Bootstrap (v4.3.1): index.js
+   * Bootstrap (v4.2.1): index.js
    * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
    * --------------------------------------------------------------------------
    */
@@ -6431,7 +6865,7 @@ __webpack_require__.r(__webpack_exports__);
 
   Object.defineProperty(exports, '__esModule', { value: true });
 
-}));
+})));
 //# sourceMappingURL=bootstrap.js.map
 
 
@@ -6449,7 +6883,26 @@ exports = module.exports = __webpack_require__(/*! ../../../node_modules/css-loa
 
 
 // module
-exports.push([module.i, "\n.modal-content{\n    width: 100% !important;\n    position: absolute !important;\n}\n.mostrar{\n    display: list-item !important;\n    opacity: 1 !important;\n    position: absolute !important;\n    background-color: #3c29297a !important;\n}\n", ""]);
+exports.push([module.i, "\n.modal-content{\n    width: 100% !important;\n    position: absolute !important;\n}\n.mostrar{\n    display: list-item !important;\n    opacity: 1 !important;\n    position: absolute !important;\n    background-color: #3c29297a !important;\n}\n.div-error{\n    display: flex;\n    justify-content: center;\n}\n.text-error{\n    color:red !important;\n    font-weight: bold;\n}\n", ""]);
+
+// exports
+
+
+/***/ }),
+
+/***/ "./node_modules/css-loader/index.js?!./node_modules/vue-loader/lib/loaders/stylePostLoader.js!./node_modules/postcss-loader/src/index.js?!./node_modules/vue-loader/lib/index.js?!./resources/js/components/Articulo.vue?vue&type=style&index=0&lang=css&":
+/*!**************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** ./node_modules/css-loader??ref--5-1!./node_modules/vue-loader/lib/loaders/stylePostLoader.js!./node_modules/postcss-loader/src??ref--5-2!./node_modules/vue-loader/lib??vue-loader-options!./resources/js/components/Articulo.vue?vue&type=style&index=0&lang=css& ***!
+  \**************************************************************************************************************************************************************************************************************************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+exports = module.exports = __webpack_require__(/*! ../../../node_modules/css-loader/lib/css-base.js */ "./node_modules/css-loader/lib/css-base.js")(false);
+// imports
+
+
+// module
+exports.push([module.i, "\n.modal-content{\n    width: 100% !important;\n    position: absolute !important;\n}\n.mostrar{\n    display: list-item !important;\n    opacity: 1 !important;\n    position: absolute !important;\n    background-color: #3c29297a !important;\n}\n.div-error{\n    display: flex;\n    justify-content: center;\n}\n.text-error{\n    color:red !important;\n    font-weight: bold;\n}\n", ""]);
 
 // exports
 
@@ -16948,6 +17401,3832 @@ if ( !noGlobal ) {
 return jQuery;
 } );
 
+
+/***/ }),
+
+/***/ "./node_modules/jsbarcode/bin/JsBarcode.js":
+/*!*************************************************!*\
+  !*** ./node_modules/jsbarcode/bin/JsBarcode.js ***!
+  \*************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+var _barcodes = __webpack_require__(/*! ./barcodes/ */ "./node_modules/jsbarcode/bin/barcodes/index.js");
+
+var _barcodes2 = _interopRequireDefault(_barcodes);
+
+var _merge = __webpack_require__(/*! ./help/merge.js */ "./node_modules/jsbarcode/bin/help/merge.js");
+
+var _merge2 = _interopRequireDefault(_merge);
+
+var _linearizeEncodings = __webpack_require__(/*! ./help/linearizeEncodings.js */ "./node_modules/jsbarcode/bin/help/linearizeEncodings.js");
+
+var _linearizeEncodings2 = _interopRequireDefault(_linearizeEncodings);
+
+var _fixOptions = __webpack_require__(/*! ./help/fixOptions.js */ "./node_modules/jsbarcode/bin/help/fixOptions.js");
+
+var _fixOptions2 = _interopRequireDefault(_fixOptions);
+
+var _getRenderProperties = __webpack_require__(/*! ./help/getRenderProperties.js */ "./node_modules/jsbarcode/bin/help/getRenderProperties.js");
+
+var _getRenderProperties2 = _interopRequireDefault(_getRenderProperties);
+
+var _optionsFromStrings = __webpack_require__(/*! ./help/optionsFromStrings.js */ "./node_modules/jsbarcode/bin/help/optionsFromStrings.js");
+
+var _optionsFromStrings2 = _interopRequireDefault(_optionsFromStrings);
+
+var _ErrorHandler = __webpack_require__(/*! ./exceptions/ErrorHandler.js */ "./node_modules/jsbarcode/bin/exceptions/ErrorHandler.js");
+
+var _ErrorHandler2 = _interopRequireDefault(_ErrorHandler);
+
+var _exceptions = __webpack_require__(/*! ./exceptions/exceptions.js */ "./node_modules/jsbarcode/bin/exceptions/exceptions.js");
+
+var _defaults = __webpack_require__(/*! ./options/defaults.js */ "./node_modules/jsbarcode/bin/options/defaults.js");
+
+var _defaults2 = _interopRequireDefault(_defaults);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+// The protype of the object returned from the JsBarcode() call
+
+
+// Help functions
+var API = function API() {};
+
+// The first call of the library API
+// Will return an object with all barcodes calls and the data that is used
+// by the renderers
+
+
+// Default values
+
+
+// Exceptions
+// Import all the barcodes
+var JsBarcode = function JsBarcode(element, text, options) {
+	var api = new API();
+
+	if (typeof element === "undefined") {
+		throw Error("No element to render on was provided.");
+	}
+
+	// Variables that will be pased through the API calls
+	api._renderProperties = (0, _getRenderProperties2.default)(element);
+	api._encodings = [];
+	api._options = _defaults2.default;
+	api._errorHandler = new _ErrorHandler2.default(api);
+
+	// If text is set, use the simple syntax (render the barcode directly)
+	if (typeof text !== "undefined") {
+		options = options || {};
+
+		if (!options.format) {
+			options.format = autoSelectBarcode();
+		}
+
+		api.options(options)[options.format](text, options).render();
+	}
+
+	return api;
+};
+
+// To make tests work TODO: remove
+JsBarcode.getModule = function (name) {
+	return _barcodes2.default[name];
+};
+
+// Register all barcodes
+for (var name in _barcodes2.default) {
+	if (_barcodes2.default.hasOwnProperty(name)) {
+		// Security check if the propery is a prototype property
+		registerBarcode(_barcodes2.default, name);
+	}
+}
+function registerBarcode(barcodes, name) {
+	API.prototype[name] = API.prototype[name.toUpperCase()] = API.prototype[name.toLowerCase()] = function (text, options) {
+		var api = this;
+		return api._errorHandler.wrapBarcodeCall(function () {
+			// Ensure text is options.text
+			options.text = typeof options.text === 'undefined' ? undefined : '' + options.text;
+
+			var newOptions = (0, _merge2.default)(api._options, options);
+			newOptions = (0, _optionsFromStrings2.default)(newOptions);
+			var Encoder = barcodes[name];
+			var encoded = encode(text, Encoder, newOptions);
+			api._encodings.push(encoded);
+
+			return api;
+		});
+	};
+}
+
+// encode() handles the Encoder call and builds the binary string to be rendered
+function encode(text, Encoder, options) {
+	// Ensure that text is a string
+	text = "" + text;
+
+	var encoder = new Encoder(text, options);
+
+	// If the input is not valid for the encoder, throw error.
+	// If the valid callback option is set, call it instead of throwing error
+	if (!encoder.valid()) {
+		throw new _exceptions.InvalidInputException(encoder.constructor.name, text);
+	}
+
+	// Make a request for the binary data (and other infromation) that should be rendered
+	var encoded = encoder.encode();
+
+	// Encodings can be nestled like [[1-1, 1-2], 2, [3-1, 3-2]
+	// Convert to [1-1, 1-2, 2, 3-1, 3-2]
+	encoded = (0, _linearizeEncodings2.default)(encoded);
+
+	// Merge
+	for (var i = 0; i < encoded.length; i++) {
+		encoded[i].options = (0, _merge2.default)(options, encoded[i].options);
+	}
+
+	return encoded;
+}
+
+function autoSelectBarcode() {
+	// If CODE128 exists. Use it
+	if (_barcodes2.default["CODE128"]) {
+		return "CODE128";
+	}
+
+	// Else, take the first (probably only) barcode
+	return Object.keys(_barcodes2.default)[0];
+}
+
+// Sets global encoder options
+// Added to the api by the JsBarcode function
+API.prototype.options = function (options) {
+	this._options = (0, _merge2.default)(this._options, options);
+	return this;
+};
+
+// Will create a blank space (usually in between barcodes)
+API.prototype.blank = function (size) {
+	var zeroes = new Array(size + 1).join("0");
+	this._encodings.push({ data: zeroes });
+	return this;
+};
+
+// Initialize JsBarcode on all HTML elements defined.
+API.prototype.init = function () {
+	// Should do nothing if no elements where found
+	if (!this._renderProperties) {
+		return;
+	}
+
+	// Make sure renderProperies is an array
+	if (!Array.isArray(this._renderProperties)) {
+		this._renderProperties = [this._renderProperties];
+	}
+
+	var renderProperty;
+	for (var i in this._renderProperties) {
+		renderProperty = this._renderProperties[i];
+		var options = (0, _merge2.default)(this._options, renderProperty.options);
+
+		if (options.format == "auto") {
+			options.format = autoSelectBarcode();
+		}
+
+		this._errorHandler.wrapBarcodeCall(function () {
+			var text = options.value;
+			var Encoder = _barcodes2.default[options.format.toUpperCase()];
+			var encoded = encode(text, Encoder, options);
+
+			render(renderProperty, encoded, options);
+		});
+	}
+};
+
+// The render API call. Calls the real render function.
+API.prototype.render = function () {
+	if (!this._renderProperties) {
+		throw new _exceptions.NoElementException();
+	}
+
+	if (Array.isArray(this._renderProperties)) {
+		for (var i = 0; i < this._renderProperties.length; i++) {
+			render(this._renderProperties[i], this._encodings, this._options);
+		}
+	} else {
+		render(this._renderProperties, this._encodings, this._options);
+	}
+
+	return this;
+};
+
+API.prototype._defaults = _defaults2.default;
+
+// Prepares the encodings and calls the renderer
+function render(renderProperties, encodings, options) {
+	encodings = (0, _linearizeEncodings2.default)(encodings);
+
+	for (var i = 0; i < encodings.length; i++) {
+		encodings[i].options = (0, _merge2.default)(options, encodings[i].options);
+		(0, _fixOptions2.default)(encodings[i].options);
+	}
+
+	(0, _fixOptions2.default)(options);
+
+	var Renderer = renderProperties.renderer;
+	var renderer = new Renderer(renderProperties.element, encodings, options);
+	renderer.render();
+
+	if (renderProperties.afterRender) {
+		renderProperties.afterRender();
+	}
+}
+
+// Export to browser
+if (typeof window !== "undefined") {
+	window.JsBarcode = JsBarcode;
+}
+
+// Export to jQuery
+/*global jQuery */
+if (typeof jQuery !== 'undefined') {
+	jQuery.fn.JsBarcode = function (content, options) {
+		var elementArray = [];
+		jQuery(this).each(function () {
+			elementArray.push(this);
+		});
+		return JsBarcode(elementArray, content, options);
+	};
+}
+
+// Export to commonJS
+module.exports = JsBarcode;
+
+/***/ }),
+
+/***/ "./node_modules/jsbarcode/bin/barcodes/Barcode.js":
+/*!********************************************************!*\
+  !*** ./node_modules/jsbarcode/bin/barcodes/Barcode.js ***!
+  \********************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+	value: true
+});
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var Barcode = function Barcode(data, options) {
+	_classCallCheck(this, Barcode);
+
+	this.data = data;
+	this.text = options.text || data;
+	this.options = options;
+};
+
+exports.default = Barcode;
+
+/***/ }),
+
+/***/ "./node_modules/jsbarcode/bin/barcodes/CODE128/CODE128.js":
+/*!****************************************************************!*\
+  !*** ./node_modules/jsbarcode/bin/barcodes/CODE128/CODE128.js ***!
+  \****************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+	value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _Barcode2 = __webpack_require__(/*! ../Barcode.js */ "./node_modules/jsbarcode/bin/barcodes/Barcode.js");
+
+var _Barcode3 = _interopRequireDefault(_Barcode2);
+
+var _constants = __webpack_require__(/*! ./constants */ "./node_modules/jsbarcode/bin/barcodes/CODE128/constants.js");
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+// This is the master class,
+// it does require the start code to be included in the string
+var CODE128 = function (_Barcode) {
+	_inherits(CODE128, _Barcode);
+
+	function CODE128(data, options) {
+		_classCallCheck(this, CODE128);
+
+		// Get array of ascii codes from data
+		var _this = _possibleConstructorReturn(this, (CODE128.__proto__ || Object.getPrototypeOf(CODE128)).call(this, data.substring(1), options));
+
+		_this.bytes = data.split('').map(function (char) {
+			return char.charCodeAt(0);
+		});
+		return _this;
+	}
+
+	_createClass(CODE128, [{
+		key: 'valid',
+		value: function valid() {
+			// ASCII value ranges 0-127, 200-211
+			return (/^[\x00-\x7F\xC8-\xD3]+$/.test(this.data)
+			);
+		}
+
+		// The public encoding function
+
+	}, {
+		key: 'encode',
+		value: function encode() {
+			var bytes = this.bytes;
+			// Remove the start code from the bytes and set its index
+			var startIndex = bytes.shift() - 105;
+			// Get start set by index
+			var startSet = _constants.SET_BY_CODE[startIndex];
+
+			if (startSet === undefined) {
+				throw new RangeError('The encoding does not start with a start character.');
+			}
+
+			if (this.shouldEncodeAsEan128() === true) {
+				bytes.unshift(_constants.FNC1);
+			}
+
+			// Start encode with the right type
+			var encodingResult = CODE128.next(bytes, 1, startSet);
+
+			return {
+				text: this.text === this.data ? this.text.replace(/[^\x20-\x7E]/g, '') : this.text,
+				data:
+				// Add the start bits
+				CODE128.getBar(startIndex) +
+				// Add the encoded bits
+				encodingResult.result +
+				// Add the checksum
+				CODE128.getBar((encodingResult.checksum + startIndex) % _constants.MODULO) +
+				// Add the end bits
+				CODE128.getBar(_constants.STOP)
+			};
+		}
+
+		// GS1-128/EAN-128
+
+	}, {
+		key: 'shouldEncodeAsEan128',
+		value: function shouldEncodeAsEan128() {
+			var isEAN128 = this.options.ean128 || false;
+			if (typeof isEAN128 === 'string') {
+				isEAN128 = isEAN128.toLowerCase() === 'true';
+			}
+			return isEAN128;
+		}
+
+		// Get a bar symbol by index
+
+	}], [{
+		key: 'getBar',
+		value: function getBar(index) {
+			return _constants.BARS[index] ? _constants.BARS[index].toString() : '';
+		}
+
+		// Correct an index by a set and shift it from the bytes array
+
+	}, {
+		key: 'correctIndex',
+		value: function correctIndex(bytes, set) {
+			if (set === _constants.SET_A) {
+				var charCode = bytes.shift();
+				return charCode < 32 ? charCode + 64 : charCode - 32;
+			} else if (set === _constants.SET_B) {
+				return bytes.shift() - 32;
+			} else {
+				return (bytes.shift() - 48) * 10 + bytes.shift() - 48;
+			}
+		}
+	}, {
+		key: 'next',
+		value: function next(bytes, pos, set) {
+			if (!bytes.length) {
+				return { result: '', checksum: 0 };
+			}
+
+			var nextCode = void 0,
+			    index = void 0;
+
+			// Special characters
+			if (bytes[0] >= 200) {
+				index = bytes.shift() - 105;
+				var nextSet = _constants.SWAP[index];
+
+				// Swap to other set
+				if (nextSet !== undefined) {
+					nextCode = CODE128.next(bytes, pos + 1, nextSet);
+				}
+				// Continue on current set but encode a special character
+				else {
+						// Shift
+						if ((set === _constants.SET_A || set === _constants.SET_B) && index === _constants.SHIFT) {
+							// Convert the next character so that is encoded correctly
+							bytes[0] = set === _constants.SET_A ? bytes[0] > 95 ? bytes[0] - 96 : bytes[0] : bytes[0] < 32 ? bytes[0] + 96 : bytes[0];
+						}
+						nextCode = CODE128.next(bytes, pos + 1, set);
+					}
+			}
+			// Continue encoding
+			else {
+					index = CODE128.correctIndex(bytes, set);
+					nextCode = CODE128.next(bytes, pos + 1, set);
+				}
+
+			// Get the correct binary encoding and calculate the weight
+			var enc = CODE128.getBar(index);
+			var weight = index * pos;
+
+			return {
+				result: enc + nextCode.result,
+				checksum: weight + nextCode.checksum
+			};
+		}
+	}]);
+
+	return CODE128;
+}(_Barcode3.default);
+
+exports.default = CODE128;
+
+/***/ }),
+
+/***/ "./node_modules/jsbarcode/bin/barcodes/CODE128/CODE128A.js":
+/*!*****************************************************************!*\
+  !*** ./node_modules/jsbarcode/bin/barcodes/CODE128/CODE128A.js ***!
+  \*****************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+	value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _CODE2 = __webpack_require__(/*! ./CODE128.js */ "./node_modules/jsbarcode/bin/barcodes/CODE128/CODE128.js");
+
+var _CODE3 = _interopRequireDefault(_CODE2);
+
+var _constants = __webpack_require__(/*! ./constants */ "./node_modules/jsbarcode/bin/barcodes/CODE128/constants.js");
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var CODE128A = function (_CODE) {
+	_inherits(CODE128A, _CODE);
+
+	function CODE128A(string, options) {
+		_classCallCheck(this, CODE128A);
+
+		return _possibleConstructorReturn(this, (CODE128A.__proto__ || Object.getPrototypeOf(CODE128A)).call(this, _constants.A_START_CHAR + string, options));
+	}
+
+	_createClass(CODE128A, [{
+		key: 'valid',
+		value: function valid() {
+			return new RegExp('^' + _constants.A_CHARS + '+$').test(this.data);
+		}
+	}]);
+
+	return CODE128A;
+}(_CODE3.default);
+
+exports.default = CODE128A;
+
+/***/ }),
+
+/***/ "./node_modules/jsbarcode/bin/barcodes/CODE128/CODE128B.js":
+/*!*****************************************************************!*\
+  !*** ./node_modules/jsbarcode/bin/barcodes/CODE128/CODE128B.js ***!
+  \*****************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+	value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _CODE2 = __webpack_require__(/*! ./CODE128.js */ "./node_modules/jsbarcode/bin/barcodes/CODE128/CODE128.js");
+
+var _CODE3 = _interopRequireDefault(_CODE2);
+
+var _constants = __webpack_require__(/*! ./constants */ "./node_modules/jsbarcode/bin/barcodes/CODE128/constants.js");
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var CODE128B = function (_CODE) {
+	_inherits(CODE128B, _CODE);
+
+	function CODE128B(string, options) {
+		_classCallCheck(this, CODE128B);
+
+		return _possibleConstructorReturn(this, (CODE128B.__proto__ || Object.getPrototypeOf(CODE128B)).call(this, _constants.B_START_CHAR + string, options));
+	}
+
+	_createClass(CODE128B, [{
+		key: 'valid',
+		value: function valid() {
+			return new RegExp('^' + _constants.B_CHARS + '+$').test(this.data);
+		}
+	}]);
+
+	return CODE128B;
+}(_CODE3.default);
+
+exports.default = CODE128B;
+
+/***/ }),
+
+/***/ "./node_modules/jsbarcode/bin/barcodes/CODE128/CODE128C.js":
+/*!*****************************************************************!*\
+  !*** ./node_modules/jsbarcode/bin/barcodes/CODE128/CODE128C.js ***!
+  \*****************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+	value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _CODE2 = __webpack_require__(/*! ./CODE128.js */ "./node_modules/jsbarcode/bin/barcodes/CODE128/CODE128.js");
+
+var _CODE3 = _interopRequireDefault(_CODE2);
+
+var _constants = __webpack_require__(/*! ./constants */ "./node_modules/jsbarcode/bin/barcodes/CODE128/constants.js");
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var CODE128C = function (_CODE) {
+	_inherits(CODE128C, _CODE);
+
+	function CODE128C(string, options) {
+		_classCallCheck(this, CODE128C);
+
+		return _possibleConstructorReturn(this, (CODE128C.__proto__ || Object.getPrototypeOf(CODE128C)).call(this, _constants.C_START_CHAR + string, options));
+	}
+
+	_createClass(CODE128C, [{
+		key: 'valid',
+		value: function valid() {
+			return new RegExp('^' + _constants.C_CHARS + '+$').test(this.data);
+		}
+	}]);
+
+	return CODE128C;
+}(_CODE3.default);
+
+exports.default = CODE128C;
+
+/***/ }),
+
+/***/ "./node_modules/jsbarcode/bin/barcodes/CODE128/CODE128_AUTO.js":
+/*!*********************************************************************!*\
+  !*** ./node_modules/jsbarcode/bin/barcodes/CODE128/CODE128_AUTO.js ***!
+  \*********************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+	value: true
+});
+
+var _CODE2 = __webpack_require__(/*! ./CODE128 */ "./node_modules/jsbarcode/bin/barcodes/CODE128/CODE128.js");
+
+var _CODE3 = _interopRequireDefault(_CODE2);
+
+var _auto = __webpack_require__(/*! ./auto */ "./node_modules/jsbarcode/bin/barcodes/CODE128/auto.js");
+
+var _auto2 = _interopRequireDefault(_auto);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var CODE128AUTO = function (_CODE) {
+	_inherits(CODE128AUTO, _CODE);
+
+	function CODE128AUTO(data, options) {
+		_classCallCheck(this, CODE128AUTO);
+
+		// ASCII value ranges 0-127, 200-211
+		if (/^[\x00-\x7F\xC8-\xD3]+$/.test(data)) {
+			var _this = _possibleConstructorReturn(this, (CODE128AUTO.__proto__ || Object.getPrototypeOf(CODE128AUTO)).call(this, (0, _auto2.default)(data), options));
+		} else {
+			var _this = _possibleConstructorReturn(this, (CODE128AUTO.__proto__ || Object.getPrototypeOf(CODE128AUTO)).call(this, data, options));
+		}
+		return _possibleConstructorReturn(_this);
+	}
+
+	return CODE128AUTO;
+}(_CODE3.default);
+
+exports.default = CODE128AUTO;
+
+/***/ }),
+
+/***/ "./node_modules/jsbarcode/bin/barcodes/CODE128/auto.js":
+/*!*************************************************************!*\
+  !*** ./node_modules/jsbarcode/bin/barcodes/CODE128/auto.js ***!
+  \*************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+	value: true
+});
+
+var _constants = __webpack_require__(/*! ./constants */ "./node_modules/jsbarcode/bin/barcodes/CODE128/constants.js");
+
+// Match Set functions
+var matchSetALength = function matchSetALength(string) {
+	return string.match(new RegExp('^' + _constants.A_CHARS + '*'))[0].length;
+};
+var matchSetBLength = function matchSetBLength(string) {
+	return string.match(new RegExp('^' + _constants.B_CHARS + '*'))[0].length;
+};
+var matchSetC = function matchSetC(string) {
+	return string.match(new RegExp('^' + _constants.C_CHARS + '*'))[0];
+};
+
+// CODE128A or CODE128B
+function autoSelectFromAB(string, isA) {
+	var ranges = isA ? _constants.A_CHARS : _constants.B_CHARS;
+	var untilC = string.match(new RegExp('^(' + ranges + '+?)(([0-9]{2}){2,})([^0-9]|$)'));
+
+	if (untilC) {
+		return untilC[1] + String.fromCharCode(204) + autoSelectFromC(string.substring(untilC[1].length));
+	}
+
+	var chars = string.match(new RegExp('^' + ranges + '+'))[0];
+
+	if (chars.length === string.length) {
+		return string;
+	}
+
+	return chars + String.fromCharCode(isA ? 205 : 206) + autoSelectFromAB(string.substring(chars.length), !isA);
+}
+
+// CODE128C
+function autoSelectFromC(string) {
+	var cMatch = matchSetC(string);
+	var length = cMatch.length;
+
+	if (length === string.length) {
+		return string;
+	}
+
+	string = string.substring(length);
+
+	// Select A/B depending on the longest match
+	var isA = matchSetALength(string) >= matchSetBLength(string);
+	return cMatch + String.fromCharCode(isA ? 206 : 205) + autoSelectFromAB(string, isA);
+}
+
+// Detect Code Set (A, B or C) and format the string
+
+exports.default = function (string) {
+	var newString = void 0;
+	var cLength = matchSetC(string).length;
+
+	// Select 128C if the string start with enough digits
+	if (cLength >= 2) {
+		newString = _constants.C_START_CHAR + autoSelectFromC(string);
+	} else {
+		// Select A/B depending on the longest match
+		var isA = matchSetALength(string) > matchSetBLength(string);
+		newString = (isA ? _constants.A_START_CHAR : _constants.B_START_CHAR) + autoSelectFromAB(string, isA);
+	}
+
+	return newString.replace(/[\xCD\xCE]([^])[\xCD\xCE]/, // Any sequence between 205 and 206 characters
+	function (match, char) {
+		return String.fromCharCode(203) + char;
+	});
+};
+
+/***/ }),
+
+/***/ "./node_modules/jsbarcode/bin/barcodes/CODE128/constants.js":
+/*!******************************************************************!*\
+  !*** ./node_modules/jsbarcode/bin/barcodes/CODE128/constants.js ***!
+  \******************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+	value: true
+});
+
+var _SET_BY_CODE;
+
+function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
+
+// constants for internal usage
+var SET_A = exports.SET_A = 0;
+var SET_B = exports.SET_B = 1;
+var SET_C = exports.SET_C = 2;
+
+// Special characters
+var SHIFT = exports.SHIFT = 98;
+var START_A = exports.START_A = 103;
+var START_B = exports.START_B = 104;
+var START_C = exports.START_C = 105;
+var MODULO = exports.MODULO = 103;
+var STOP = exports.STOP = 106;
+var FNC1 = exports.FNC1 = 207;
+
+// Get set by start code
+var SET_BY_CODE = exports.SET_BY_CODE = (_SET_BY_CODE = {}, _defineProperty(_SET_BY_CODE, START_A, SET_A), _defineProperty(_SET_BY_CODE, START_B, SET_B), _defineProperty(_SET_BY_CODE, START_C, SET_C), _SET_BY_CODE);
+
+// Get next set by code
+var SWAP = exports.SWAP = {
+	101: SET_A,
+	100: SET_B,
+	99: SET_C
+};
+
+var A_START_CHAR = exports.A_START_CHAR = String.fromCharCode(208); // START_A + 105
+var B_START_CHAR = exports.B_START_CHAR = String.fromCharCode(209); // START_B + 105
+var C_START_CHAR = exports.C_START_CHAR = String.fromCharCode(210); // START_C + 105
+
+// 128A (Code Set A)
+// ASCII characters 00 to 95 (0–9, A–Z and control codes), special characters, and FNC 1–4
+var A_CHARS = exports.A_CHARS = "[\x00-\x5F\xC8-\xCF]";
+
+// 128B (Code Set B)
+// ASCII characters 32 to 127 (0–9, A–Z, a–z), special characters, and FNC 1–4
+var B_CHARS = exports.B_CHARS = "[\x20-\x7F\xC8-\xCF]";
+
+// 128C (Code Set C)
+// 00–99 (encodes two digits with a single code point) and FNC1
+var C_CHARS = exports.C_CHARS = "(\xCF*[0-9]{2}\xCF*)";
+
+// CODE128 includes 107 symbols:
+// 103 data symbols, 3 start symbols (A, B and C), and 1 stop symbol (the last one)
+// Each symbol consist of three black bars (1) and three white spaces (0).
+var BARS = exports.BARS = [11011001100, 11001101100, 11001100110, 10010011000, 10010001100, 10001001100, 10011001000, 10011000100, 10001100100, 11001001000, 11001000100, 11000100100, 10110011100, 10011011100, 10011001110, 10111001100, 10011101100, 10011100110, 11001110010, 11001011100, 11001001110, 11011100100, 11001110100, 11101101110, 11101001100, 11100101100, 11100100110, 11101100100, 11100110100, 11100110010, 11011011000, 11011000110, 11000110110, 10100011000, 10001011000, 10001000110, 10110001000, 10001101000, 10001100010, 11010001000, 11000101000, 11000100010, 10110111000, 10110001110, 10001101110, 10111011000, 10111000110, 10001110110, 11101110110, 11010001110, 11000101110, 11011101000, 11011100010, 11011101110, 11101011000, 11101000110, 11100010110, 11101101000, 11101100010, 11100011010, 11101111010, 11001000010, 11110001010, 10100110000, 10100001100, 10010110000, 10010000110, 10000101100, 10000100110, 10110010000, 10110000100, 10011010000, 10011000010, 10000110100, 10000110010, 11000010010, 11001010000, 11110111010, 11000010100, 10001111010, 10100111100, 10010111100, 10010011110, 10111100100, 10011110100, 10011110010, 11110100100, 11110010100, 11110010010, 11011011110, 11011110110, 11110110110, 10101111000, 10100011110, 10001011110, 10111101000, 10111100010, 11110101000, 11110100010, 10111011110, 10111101110, 11101011110, 11110101110, 11010000100, 11010010000, 11010011100, 1100011101011];
+
+/***/ }),
+
+/***/ "./node_modules/jsbarcode/bin/barcodes/CODE128/index.js":
+/*!**************************************************************!*\
+  !*** ./node_modules/jsbarcode/bin/barcodes/CODE128/index.js ***!
+  \**************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.CODE128C = exports.CODE128B = exports.CODE128A = exports.CODE128 = undefined;
+
+var _CODE128_AUTO = __webpack_require__(/*! ./CODE128_AUTO.js */ "./node_modules/jsbarcode/bin/barcodes/CODE128/CODE128_AUTO.js");
+
+var _CODE128_AUTO2 = _interopRequireDefault(_CODE128_AUTO);
+
+var _CODE128A = __webpack_require__(/*! ./CODE128A.js */ "./node_modules/jsbarcode/bin/barcodes/CODE128/CODE128A.js");
+
+var _CODE128A2 = _interopRequireDefault(_CODE128A);
+
+var _CODE128B = __webpack_require__(/*! ./CODE128B.js */ "./node_modules/jsbarcode/bin/barcodes/CODE128/CODE128B.js");
+
+var _CODE128B2 = _interopRequireDefault(_CODE128B);
+
+var _CODE128C = __webpack_require__(/*! ./CODE128C.js */ "./node_modules/jsbarcode/bin/barcodes/CODE128/CODE128C.js");
+
+var _CODE128C2 = _interopRequireDefault(_CODE128C);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+exports.CODE128 = _CODE128_AUTO2.default;
+exports.CODE128A = _CODE128A2.default;
+exports.CODE128B = _CODE128B2.default;
+exports.CODE128C = _CODE128C2.default;
+
+/***/ }),
+
+/***/ "./node_modules/jsbarcode/bin/barcodes/CODE39/index.js":
+/*!*************************************************************!*\
+  !*** ./node_modules/jsbarcode/bin/barcodes/CODE39/index.js ***!
+  \*************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+	value: true
+});
+exports.CODE39 = undefined;
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _Barcode2 = __webpack_require__(/*! ../Barcode.js */ "./node_modules/jsbarcode/bin/barcodes/Barcode.js");
+
+var _Barcode3 = _interopRequireDefault(_Barcode2);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; } // Encoding documentation:
+// https://en.wikipedia.org/wiki/Code_39#Encoding
+
+var CODE39 = function (_Barcode) {
+	_inherits(CODE39, _Barcode);
+
+	function CODE39(data, options) {
+		_classCallCheck(this, CODE39);
+
+		data = data.toUpperCase();
+
+		// Calculate mod43 checksum if enabled
+		if (options.mod43) {
+			data += getCharacter(mod43checksum(data));
+		}
+
+		return _possibleConstructorReturn(this, (CODE39.__proto__ || Object.getPrototypeOf(CODE39)).call(this, data, options));
+	}
+
+	_createClass(CODE39, [{
+		key: "encode",
+		value: function encode() {
+			// First character is always a *
+			var result = getEncoding("*");
+
+			// Take every character and add the binary representation to the result
+			for (var i = 0; i < this.data.length; i++) {
+				result += getEncoding(this.data[i]) + "0";
+			}
+
+			// Last character is always a *
+			result += getEncoding("*");
+
+			return {
+				data: result,
+				text: this.text
+			};
+		}
+	}, {
+		key: "valid",
+		value: function valid() {
+			return this.data.search(/^[0-9A-Z\-\.\ \$\/\+\%]+$/) !== -1;
+		}
+	}]);
+
+	return CODE39;
+}(_Barcode3.default);
+
+// All characters. The position in the array is the (checksum) value
+
+
+var characters = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "-", ".", " ", "$", "/", "+", "%", "*"];
+
+// The decimal representation of the characters, is converted to the
+// corresponding binary with the getEncoding function
+var encodings = [20957, 29783, 23639, 30485, 20951, 29813, 23669, 20855, 29789, 23645, 29975, 23831, 30533, 22295, 30149, 24005, 21623, 29981, 23837, 22301, 30023, 23879, 30545, 22343, 30161, 24017, 21959, 30065, 23921, 22385, 29015, 18263, 29141, 17879, 29045, 18293, 17783, 29021, 18269, 17477, 17489, 17681, 20753, 35770];
+
+// Get the binary representation of a character by converting the encodings
+// from decimal to binary
+function getEncoding(character) {
+	return getBinary(characterValue(character));
+}
+
+function getBinary(characterValue) {
+	return encodings[characterValue].toString(2);
+}
+
+function getCharacter(characterValue) {
+	return characters[characterValue];
+}
+
+function characterValue(character) {
+	return characters.indexOf(character);
+}
+
+function mod43checksum(data) {
+	var checksum = 0;
+	for (var i = 0; i < data.length; i++) {
+		checksum += characterValue(data[i]);
+	}
+
+	checksum = checksum % 43;
+	return checksum;
+}
+
+exports.CODE39 = CODE39;
+
+/***/ }),
+
+/***/ "./node_modules/jsbarcode/bin/barcodes/EAN_UPC/EAN.js":
+/*!************************************************************!*\
+  !*** ./node_modules/jsbarcode/bin/barcodes/EAN_UPC/EAN.js ***!
+  \************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+	value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _constants = __webpack_require__(/*! ./constants */ "./node_modules/jsbarcode/bin/barcodes/EAN_UPC/constants.js");
+
+var _encoder = __webpack_require__(/*! ./encoder */ "./node_modules/jsbarcode/bin/barcodes/EAN_UPC/encoder.js");
+
+var _encoder2 = _interopRequireDefault(_encoder);
+
+var _Barcode2 = __webpack_require__(/*! ../Barcode */ "./node_modules/jsbarcode/bin/barcodes/Barcode.js");
+
+var _Barcode3 = _interopRequireDefault(_Barcode2);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+// Base class for EAN8 & EAN13
+var EAN = function (_Barcode) {
+	_inherits(EAN, _Barcode);
+
+	function EAN(data, options) {
+		_classCallCheck(this, EAN);
+
+		// Make sure the font is not bigger than the space between the guard bars
+		var _this = _possibleConstructorReturn(this, (EAN.__proto__ || Object.getPrototypeOf(EAN)).call(this, data, options));
+
+		_this.fontSize = !options.flat && options.fontSize > options.width * 10 ? options.width * 10 : options.fontSize;
+
+		// Make the guard bars go down half the way of the text
+		_this.guardHeight = options.height + _this.fontSize / 2 + options.textMargin;
+		return _this;
+	}
+
+	_createClass(EAN, [{
+		key: 'encode',
+		value: function encode() {
+			return this.options.flat ? this.encodeFlat() : this.encodeGuarded();
+		}
+	}, {
+		key: 'leftText',
+		value: function leftText(from, to) {
+			return this.text.substr(from, to);
+		}
+	}, {
+		key: 'leftEncode',
+		value: function leftEncode(data, structure) {
+			return (0, _encoder2.default)(data, structure);
+		}
+	}, {
+		key: 'rightText',
+		value: function rightText(from, to) {
+			return this.text.substr(from, to);
+		}
+	}, {
+		key: 'rightEncode',
+		value: function rightEncode(data, structure) {
+			return (0, _encoder2.default)(data, structure);
+		}
+	}, {
+		key: 'encodeGuarded',
+		value: function encodeGuarded() {
+			var textOptions = { fontSize: this.fontSize };
+			var guardOptions = { height: this.guardHeight };
+
+			return [{ data: _constants.SIDE_BIN, options: guardOptions }, { data: this.leftEncode(), text: this.leftText(), options: textOptions }, { data: _constants.MIDDLE_BIN, options: guardOptions }, { data: this.rightEncode(), text: this.rightText(), options: textOptions }, { data: _constants.SIDE_BIN, options: guardOptions }];
+		}
+	}, {
+		key: 'encodeFlat',
+		value: function encodeFlat() {
+			var data = [_constants.SIDE_BIN, this.leftEncode(), _constants.MIDDLE_BIN, this.rightEncode(), _constants.SIDE_BIN];
+
+			return {
+				data: data.join(''),
+				text: this.text
+			};
+		}
+	}]);
+
+	return EAN;
+}(_Barcode3.default);
+
+exports.default = EAN;
+
+/***/ }),
+
+/***/ "./node_modules/jsbarcode/bin/barcodes/EAN_UPC/EAN13.js":
+/*!**************************************************************!*\
+  !*** ./node_modules/jsbarcode/bin/barcodes/EAN_UPC/EAN13.js ***!
+  \**************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+	value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _get = function get(object, property, receiver) { if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { return get(parent, property, receiver); } } else if ("value" in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } };
+
+var _constants = __webpack_require__(/*! ./constants */ "./node_modules/jsbarcode/bin/barcodes/EAN_UPC/constants.js");
+
+var _EAN2 = __webpack_require__(/*! ./EAN */ "./node_modules/jsbarcode/bin/barcodes/EAN_UPC/EAN.js");
+
+var _EAN3 = _interopRequireDefault(_EAN2);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; } // Encoding documentation:
+// https://en.wikipedia.org/wiki/International_Article_Number_(EAN)#Binary_encoding_of_data_digits_into_EAN-13_barcode
+
+// Calculate the checksum digit
+// https://en.wikipedia.org/wiki/International_Article_Number_(EAN)#Calculation_of_checksum_digit
+var checksum = function checksum(number) {
+	var res = number.substr(0, 12).split('').map(function (n) {
+		return +n;
+	}).reduce(function (sum, a, idx) {
+		return idx % 2 ? sum + a * 3 : sum + a;
+	}, 0);
+
+	return (10 - res % 10) % 10;
+};
+
+var EAN13 = function (_EAN) {
+	_inherits(EAN13, _EAN);
+
+	function EAN13(data, options) {
+		_classCallCheck(this, EAN13);
+
+		// Add checksum if it does not exist
+		if (data.search(/^[0-9]{12}$/) !== -1) {
+			data += checksum(data);
+		}
+
+		// Adds a last character to the end of the barcode
+		var _this = _possibleConstructorReturn(this, (EAN13.__proto__ || Object.getPrototypeOf(EAN13)).call(this, data, options));
+
+		_this.lastChar = options.lastChar;
+		return _this;
+	}
+
+	_createClass(EAN13, [{
+		key: 'valid',
+		value: function valid() {
+			return this.data.search(/^[0-9]{13}$/) !== -1 && +this.data[12] === checksum(this.data);
+		}
+	}, {
+		key: 'leftText',
+		value: function leftText() {
+			return _get(EAN13.prototype.__proto__ || Object.getPrototypeOf(EAN13.prototype), 'leftText', this).call(this, 1, 6);
+		}
+	}, {
+		key: 'leftEncode',
+		value: function leftEncode() {
+			var data = this.data.substr(1, 6);
+			var structure = _constants.EAN13_STRUCTURE[this.data[0]];
+			return _get(EAN13.prototype.__proto__ || Object.getPrototypeOf(EAN13.prototype), 'leftEncode', this).call(this, data, structure);
+		}
+	}, {
+		key: 'rightText',
+		value: function rightText() {
+			return _get(EAN13.prototype.__proto__ || Object.getPrototypeOf(EAN13.prototype), 'rightText', this).call(this, 7, 6);
+		}
+	}, {
+		key: 'rightEncode',
+		value: function rightEncode() {
+			var data = this.data.substr(7, 6);
+			return _get(EAN13.prototype.__proto__ || Object.getPrototypeOf(EAN13.prototype), 'rightEncode', this).call(this, data, 'RRRRRR');
+		}
+
+		// The "standard" way of printing EAN13 barcodes with guard bars
+
+	}, {
+		key: 'encodeGuarded',
+		value: function encodeGuarded() {
+			var data = _get(EAN13.prototype.__proto__ || Object.getPrototypeOf(EAN13.prototype), 'encodeGuarded', this).call(this);
+
+			// Extend data with left digit & last character
+			if (this.options.displayValue) {
+				data.unshift({
+					data: '000000000000',
+					text: this.text.substr(0, 1),
+					options: { textAlign: 'left', fontSize: this.fontSize }
+				});
+
+				if (this.options.lastChar) {
+					data.push({
+						data: '00'
+					});
+					data.push({
+						data: '00000',
+						text: this.options.lastChar,
+						options: { fontSize: this.fontSize }
+					});
+				}
+			}
+
+			return data;
+		}
+	}]);
+
+	return EAN13;
+}(_EAN3.default);
+
+exports.default = EAN13;
+
+/***/ }),
+
+/***/ "./node_modules/jsbarcode/bin/barcodes/EAN_UPC/EAN2.js":
+/*!*************************************************************!*\
+  !*** ./node_modules/jsbarcode/bin/barcodes/EAN_UPC/EAN2.js ***!
+  \*************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+	value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _constants = __webpack_require__(/*! ./constants */ "./node_modules/jsbarcode/bin/barcodes/EAN_UPC/constants.js");
+
+var _encoder = __webpack_require__(/*! ./encoder */ "./node_modules/jsbarcode/bin/barcodes/EAN_UPC/encoder.js");
+
+var _encoder2 = _interopRequireDefault(_encoder);
+
+var _Barcode2 = __webpack_require__(/*! ../Barcode */ "./node_modules/jsbarcode/bin/barcodes/Barcode.js");
+
+var _Barcode3 = _interopRequireDefault(_Barcode2);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; } // Encoding documentation:
+// https://en.wikipedia.org/wiki/EAN_2#Encoding
+
+var EAN2 = function (_Barcode) {
+	_inherits(EAN2, _Barcode);
+
+	function EAN2(data, options) {
+		_classCallCheck(this, EAN2);
+
+		return _possibleConstructorReturn(this, (EAN2.__proto__ || Object.getPrototypeOf(EAN2)).call(this, data, options));
+	}
+
+	_createClass(EAN2, [{
+		key: 'valid',
+		value: function valid() {
+			return this.data.search(/^[0-9]{2}$/) !== -1;
+		}
+	}, {
+		key: 'encode',
+		value: function encode() {
+			// Choose the structure based on the number mod 4
+			var structure = _constants.EAN2_STRUCTURE[parseInt(this.data) % 4];
+			return {
+				// Start bits + Encode the two digits with 01 in between
+				data: '1011' + (0, _encoder2.default)(this.data, structure, '01'),
+				text: this.text
+			};
+		}
+	}]);
+
+	return EAN2;
+}(_Barcode3.default);
+
+exports.default = EAN2;
+
+/***/ }),
+
+/***/ "./node_modules/jsbarcode/bin/barcodes/EAN_UPC/EAN5.js":
+/*!*************************************************************!*\
+  !*** ./node_modules/jsbarcode/bin/barcodes/EAN_UPC/EAN5.js ***!
+  \*************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+	value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _constants = __webpack_require__(/*! ./constants */ "./node_modules/jsbarcode/bin/barcodes/EAN_UPC/constants.js");
+
+var _encoder = __webpack_require__(/*! ./encoder */ "./node_modules/jsbarcode/bin/barcodes/EAN_UPC/encoder.js");
+
+var _encoder2 = _interopRequireDefault(_encoder);
+
+var _Barcode2 = __webpack_require__(/*! ../Barcode */ "./node_modules/jsbarcode/bin/barcodes/Barcode.js");
+
+var _Barcode3 = _interopRequireDefault(_Barcode2);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; } // Encoding documentation:
+// https://en.wikipedia.org/wiki/EAN_5#Encoding
+
+var checksum = function checksum(data) {
+	var result = data.split('').map(function (n) {
+		return +n;
+	}).reduce(function (sum, a, idx) {
+		return idx % 2 ? sum + a * 9 : sum + a * 3;
+	}, 0);
+	return result % 10;
+};
+
+var EAN5 = function (_Barcode) {
+	_inherits(EAN5, _Barcode);
+
+	function EAN5(data, options) {
+		_classCallCheck(this, EAN5);
+
+		return _possibleConstructorReturn(this, (EAN5.__proto__ || Object.getPrototypeOf(EAN5)).call(this, data, options));
+	}
+
+	_createClass(EAN5, [{
+		key: 'valid',
+		value: function valid() {
+			return this.data.search(/^[0-9]{5}$/) !== -1;
+		}
+	}, {
+		key: 'encode',
+		value: function encode() {
+			var structure = _constants.EAN5_STRUCTURE[checksum(this.data)];
+			return {
+				data: '1011' + (0, _encoder2.default)(this.data, structure, '01'),
+				text: this.text
+			};
+		}
+	}]);
+
+	return EAN5;
+}(_Barcode3.default);
+
+exports.default = EAN5;
+
+/***/ }),
+
+/***/ "./node_modules/jsbarcode/bin/barcodes/EAN_UPC/EAN8.js":
+/*!*************************************************************!*\
+  !*** ./node_modules/jsbarcode/bin/barcodes/EAN_UPC/EAN8.js ***!
+  \*************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+	value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _get = function get(object, property, receiver) { if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { return get(parent, property, receiver); } } else if ("value" in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } };
+
+var _EAN2 = __webpack_require__(/*! ./EAN */ "./node_modules/jsbarcode/bin/barcodes/EAN_UPC/EAN.js");
+
+var _EAN3 = _interopRequireDefault(_EAN2);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; } // Encoding documentation:
+// http://www.barcodeisland.com/ean8.phtml
+
+// Calculate the checksum digit
+var checksum = function checksum(number) {
+	var res = number.substr(0, 7).split('').map(function (n) {
+		return +n;
+	}).reduce(function (sum, a, idx) {
+		return idx % 2 ? sum + a : sum + a * 3;
+	}, 0);
+
+	return (10 - res % 10) % 10;
+};
+
+var EAN8 = function (_EAN) {
+	_inherits(EAN8, _EAN);
+
+	function EAN8(data, options) {
+		_classCallCheck(this, EAN8);
+
+		// Add checksum if it does not exist
+		if (data.search(/^[0-9]{7}$/) !== -1) {
+			data += checksum(data);
+		}
+
+		return _possibleConstructorReturn(this, (EAN8.__proto__ || Object.getPrototypeOf(EAN8)).call(this, data, options));
+	}
+
+	_createClass(EAN8, [{
+		key: 'valid',
+		value: function valid() {
+			return this.data.search(/^[0-9]{8}$/) !== -1 && +this.data[7] === checksum(this.data);
+		}
+	}, {
+		key: 'leftText',
+		value: function leftText() {
+			return _get(EAN8.prototype.__proto__ || Object.getPrototypeOf(EAN8.prototype), 'leftText', this).call(this, 0, 4);
+		}
+	}, {
+		key: 'leftEncode',
+		value: function leftEncode() {
+			var data = this.data.substr(0, 4);
+			return _get(EAN8.prototype.__proto__ || Object.getPrototypeOf(EAN8.prototype), 'leftEncode', this).call(this, data, 'LLLL');
+		}
+	}, {
+		key: 'rightText',
+		value: function rightText() {
+			return _get(EAN8.prototype.__proto__ || Object.getPrototypeOf(EAN8.prototype), 'rightText', this).call(this, 4, 4);
+		}
+	}, {
+		key: 'rightEncode',
+		value: function rightEncode() {
+			var data = this.data.substr(4, 4);
+			return _get(EAN8.prototype.__proto__ || Object.getPrototypeOf(EAN8.prototype), 'rightEncode', this).call(this, data, 'RRRR');
+		}
+	}]);
+
+	return EAN8;
+}(_EAN3.default);
+
+exports.default = EAN8;
+
+/***/ }),
+
+/***/ "./node_modules/jsbarcode/bin/barcodes/EAN_UPC/UPC.js":
+/*!************************************************************!*\
+  !*** ./node_modules/jsbarcode/bin/barcodes/EAN_UPC/UPC.js ***!
+  \************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+	value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+exports.checksum = checksum;
+
+var _encoder = __webpack_require__(/*! ./encoder */ "./node_modules/jsbarcode/bin/barcodes/EAN_UPC/encoder.js");
+
+var _encoder2 = _interopRequireDefault(_encoder);
+
+var _Barcode2 = __webpack_require__(/*! ../Barcode.js */ "./node_modules/jsbarcode/bin/barcodes/Barcode.js");
+
+var _Barcode3 = _interopRequireDefault(_Barcode2);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; } // Encoding documentation:
+// https://en.wikipedia.org/wiki/Universal_Product_Code#Encoding
+
+var UPC = function (_Barcode) {
+	_inherits(UPC, _Barcode);
+
+	function UPC(data, options) {
+		_classCallCheck(this, UPC);
+
+		// Add checksum if it does not exist
+		if (data.search(/^[0-9]{11}$/) !== -1) {
+			data += checksum(data);
+		}
+
+		var _this = _possibleConstructorReturn(this, (UPC.__proto__ || Object.getPrototypeOf(UPC)).call(this, data, options));
+
+		_this.displayValue = options.displayValue;
+
+		// Make sure the font is not bigger than the space between the guard bars
+		if (options.fontSize > options.width * 10) {
+			_this.fontSize = options.width * 10;
+		} else {
+			_this.fontSize = options.fontSize;
+		}
+
+		// Make the guard bars go down half the way of the text
+		_this.guardHeight = options.height + _this.fontSize / 2 + options.textMargin;
+		return _this;
+	}
+
+	_createClass(UPC, [{
+		key: "valid",
+		value: function valid() {
+			return this.data.search(/^[0-9]{12}$/) !== -1 && this.data[11] == checksum(this.data);
+		}
+	}, {
+		key: "encode",
+		value: function encode() {
+			if (this.options.flat) {
+				return this.flatEncoding();
+			} else {
+				return this.guardedEncoding();
+			}
+		}
+	}, {
+		key: "flatEncoding",
+		value: function flatEncoding() {
+			var result = "";
+
+			result += "101";
+			result += (0, _encoder2.default)(this.data.substr(0, 6), "LLLLLL");
+			result += "01010";
+			result += (0, _encoder2.default)(this.data.substr(6, 6), "RRRRRR");
+			result += "101";
+
+			return {
+				data: result,
+				text: this.text
+			};
+		}
+	}, {
+		key: "guardedEncoding",
+		value: function guardedEncoding() {
+			var result = [];
+
+			// Add the first digit
+			if (this.displayValue) {
+				result.push({
+					data: "00000000",
+					text: this.text.substr(0, 1),
+					options: { textAlign: "left", fontSize: this.fontSize }
+				});
+			}
+
+			// Add the guard bars
+			result.push({
+				data: "101" + (0, _encoder2.default)(this.data[0], "L"),
+				options: { height: this.guardHeight }
+			});
+
+			// Add the left side
+			result.push({
+				data: (0, _encoder2.default)(this.data.substr(1, 5), "LLLLL"),
+				text: this.text.substr(1, 5),
+				options: { fontSize: this.fontSize }
+			});
+
+			// Add the middle bits
+			result.push({
+				data: "01010",
+				options: { height: this.guardHeight }
+			});
+
+			// Add the right side
+			result.push({
+				data: (0, _encoder2.default)(this.data.substr(6, 5), "RRRRR"),
+				text: this.text.substr(6, 5),
+				options: { fontSize: this.fontSize }
+			});
+
+			// Add the end bits
+			result.push({
+				data: (0, _encoder2.default)(this.data[11], "R") + "101",
+				options: { height: this.guardHeight }
+			});
+
+			// Add the last digit
+			if (this.displayValue) {
+				result.push({
+					data: "00000000",
+					text: this.text.substr(11, 1),
+					options: { textAlign: "right", fontSize: this.fontSize }
+				});
+			}
+
+			return result;
+		}
+	}]);
+
+	return UPC;
+}(_Barcode3.default);
+
+// Calulate the checksum digit
+// https://en.wikipedia.org/wiki/International_Article_Number_(EAN)#Calculation_of_checksum_digit
+
+
+function checksum(number) {
+	var result = 0;
+
+	var i;
+	for (i = 1; i < 11; i += 2) {
+		result += parseInt(number[i]);
+	}
+	for (i = 0; i < 11; i += 2) {
+		result += parseInt(number[i]) * 3;
+	}
+
+	return (10 - result % 10) % 10;
+}
+
+exports.default = UPC;
+
+/***/ }),
+
+/***/ "./node_modules/jsbarcode/bin/barcodes/EAN_UPC/UPCE.js":
+/*!*************************************************************!*\
+  !*** ./node_modules/jsbarcode/bin/barcodes/EAN_UPC/UPCE.js ***!
+  \*************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+	value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _encoder = __webpack_require__(/*! ./encoder */ "./node_modules/jsbarcode/bin/barcodes/EAN_UPC/encoder.js");
+
+var _encoder2 = _interopRequireDefault(_encoder);
+
+var _Barcode2 = __webpack_require__(/*! ../Barcode.js */ "./node_modules/jsbarcode/bin/barcodes/Barcode.js");
+
+var _Barcode3 = _interopRequireDefault(_Barcode2);
+
+var _UPC = __webpack_require__(/*! ./UPC.js */ "./node_modules/jsbarcode/bin/barcodes/EAN_UPC/UPC.js");
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; } // Encoding documentation:
+// https://en.wikipedia.org/wiki/Universal_Product_Code#Encoding
+//
+// UPC-E documentation:
+// https://en.wikipedia.org/wiki/Universal_Product_Code#UPC-E
+
+var EXPANSIONS = ["XX00000XXX", "XX10000XXX", "XX20000XXX", "XXX00000XX", "XXXX00000X", "XXXXX00005", "XXXXX00006", "XXXXX00007", "XXXXX00008", "XXXXX00009"];
+
+var PARITIES = [["EEEOOO", "OOOEEE"], ["EEOEOO", "OOEOEE"], ["EEOOEO", "OOEEOE"], ["EEOOOE", "OOEEEO"], ["EOEEOO", "OEOOEE"], ["EOOEEO", "OEEOOE"], ["EOOOEE", "OEEEOO"], ["EOEOEO", "OEOEOE"], ["EOEOOE", "OEOEEO"], ["EOOEOE", "OEEOEO"]];
+
+var UPCE = function (_Barcode) {
+	_inherits(UPCE, _Barcode);
+
+	function UPCE(data, options) {
+		_classCallCheck(this, UPCE);
+
+		var _this = _possibleConstructorReturn(this, (UPCE.__proto__ || Object.getPrototypeOf(UPCE)).call(this, data, options));
+		// Code may be 6 or 8 digits;
+		// A 7 digit code is ambiguous as to whether the extra digit
+		// is a UPC-A check or number system digit.
+
+
+		_this.isValid = false;
+		if (data.search(/^[0-9]{6}$/) !== -1) {
+			_this.middleDigits = data;
+			_this.upcA = expandToUPCA(data, "0");
+			_this.text = options.text || '' + _this.upcA[0] + data + _this.upcA[_this.upcA.length - 1];
+			_this.isValid = true;
+		} else if (data.search(/^[01][0-9]{7}$/) !== -1) {
+			_this.middleDigits = data.substring(1, data.length - 1);
+			_this.upcA = expandToUPCA(_this.middleDigits, data[0]);
+
+			if (_this.upcA[_this.upcA.length - 1] === data[data.length - 1]) {
+				_this.isValid = true;
+			} else {
+				// checksum mismatch
+				return _possibleConstructorReturn(_this);
+			}
+		} else {
+			return _possibleConstructorReturn(_this);
+		}
+
+		_this.displayValue = options.displayValue;
+
+		// Make sure the font is not bigger than the space between the guard bars
+		if (options.fontSize > options.width * 10) {
+			_this.fontSize = options.width * 10;
+		} else {
+			_this.fontSize = options.fontSize;
+		}
+
+		// Make the guard bars go down half the way of the text
+		_this.guardHeight = options.height + _this.fontSize / 2 + options.textMargin;
+		return _this;
+	}
+
+	_createClass(UPCE, [{
+		key: 'valid',
+		value: function valid() {
+			return this.isValid;
+		}
+	}, {
+		key: 'encode',
+		value: function encode() {
+			if (this.options.flat) {
+				return this.flatEncoding();
+			} else {
+				return this.guardedEncoding();
+			}
+		}
+	}, {
+		key: 'flatEncoding',
+		value: function flatEncoding() {
+			var result = "";
+
+			result += "101";
+			result += this.encodeMiddleDigits();
+			result += "010101";
+
+			return {
+				data: result,
+				text: this.text
+			};
+		}
+	}, {
+		key: 'guardedEncoding',
+		value: function guardedEncoding() {
+			var result = [];
+
+			// Add the UPC-A number system digit beneath the quiet zone
+			if (this.displayValue) {
+				result.push({
+					data: "00000000",
+					text: this.text[0],
+					options: { textAlign: "left", fontSize: this.fontSize }
+				});
+			}
+
+			// Add the guard bars
+			result.push({
+				data: "101",
+				options: { height: this.guardHeight }
+			});
+
+			// Add the 6 UPC-E digits
+			result.push({
+				data: this.encodeMiddleDigits(),
+				text: this.text.substring(1, 7),
+				options: { fontSize: this.fontSize }
+			});
+
+			// Add the end bits
+			result.push({
+				data: "010101",
+				options: { height: this.guardHeight }
+			});
+
+			// Add the UPC-A check digit beneath the quiet zone
+			if (this.displayValue) {
+				result.push({
+					data: "00000000",
+					text: this.text[7],
+					options: { textAlign: "right", fontSize: this.fontSize }
+				});
+			}
+
+			return result;
+		}
+	}, {
+		key: 'encodeMiddleDigits',
+		value: function encodeMiddleDigits() {
+			var numberSystem = this.upcA[0];
+			var checkDigit = this.upcA[this.upcA.length - 1];
+			var parity = PARITIES[parseInt(checkDigit)][parseInt(numberSystem)];
+			return (0, _encoder2.default)(this.middleDigits, parity);
+		}
+	}]);
+
+	return UPCE;
+}(_Barcode3.default);
+
+function expandToUPCA(middleDigits, numberSystem) {
+	var lastUpcE = parseInt(middleDigits[middleDigits.length - 1]);
+	var expansion = EXPANSIONS[lastUpcE];
+
+	var result = "";
+	var digitIndex = 0;
+	for (var i = 0; i < expansion.length; i++) {
+		var c = expansion[i];
+		if (c === 'X') {
+			result += middleDigits[digitIndex++];
+		} else {
+			result += c;
+		}
+	}
+
+	result = '' + numberSystem + result;
+	return '' + result + (0, _UPC.checksum)(result);
+}
+
+exports.default = UPCE;
+
+/***/ }),
+
+/***/ "./node_modules/jsbarcode/bin/barcodes/EAN_UPC/constants.js":
+/*!******************************************************************!*\
+  !*** ./node_modules/jsbarcode/bin/barcodes/EAN_UPC/constants.js ***!
+  \******************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+	value: true
+});
+// Standard start end and middle bits
+var SIDE_BIN = exports.SIDE_BIN = '101';
+var MIDDLE_BIN = exports.MIDDLE_BIN = '01010';
+
+var BINARIES = exports.BINARIES = {
+	'L': [// The L (left) type of encoding
+	'0001101', '0011001', '0010011', '0111101', '0100011', '0110001', '0101111', '0111011', '0110111', '0001011'],
+	'G': [// The G type of encoding
+	'0100111', '0110011', '0011011', '0100001', '0011101', '0111001', '0000101', '0010001', '0001001', '0010111'],
+	'R': [// The R (right) type of encoding
+	'1110010', '1100110', '1101100', '1000010', '1011100', '1001110', '1010000', '1000100', '1001000', '1110100'],
+	'O': [// The O (odd) encoding for UPC-E
+	'0001101', '0011001', '0010011', '0111101', '0100011', '0110001', '0101111', '0111011', '0110111', '0001011'],
+	'E': [// The E (even) encoding for UPC-E
+	'0100111', '0110011', '0011011', '0100001', '0011101', '0111001', '0000101', '0010001', '0001001', '0010111']
+};
+
+// Define the EAN-2 structure
+var EAN2_STRUCTURE = exports.EAN2_STRUCTURE = ['LL', 'LG', 'GL', 'GG'];
+
+// Define the EAN-5 structure
+var EAN5_STRUCTURE = exports.EAN5_STRUCTURE = ['GGLLL', 'GLGLL', 'GLLGL', 'GLLLG', 'LGGLL', 'LLGGL', 'LLLGG', 'LGLGL', 'LGLLG', 'LLGLG'];
+
+// Define the EAN-13 structure
+var EAN13_STRUCTURE = exports.EAN13_STRUCTURE = ['LLLLLL', 'LLGLGG', 'LLGGLG', 'LLGGGL', 'LGLLGG', 'LGGLLG', 'LGGGLL', 'LGLGLG', 'LGLGGL', 'LGGLGL'];
+
+/***/ }),
+
+/***/ "./node_modules/jsbarcode/bin/barcodes/EAN_UPC/encoder.js":
+/*!****************************************************************!*\
+  !*** ./node_modules/jsbarcode/bin/barcodes/EAN_UPC/encoder.js ***!
+  \****************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+	value: true
+});
+
+var _constants = __webpack_require__(/*! ./constants */ "./node_modules/jsbarcode/bin/barcodes/EAN_UPC/constants.js");
+
+// Encode data string
+var encode = function encode(data, structure, separator) {
+	var encoded = data.split('').map(function (val, idx) {
+		return _constants.BINARIES[structure[idx]];
+	}).map(function (val, idx) {
+		return val ? val[data[idx]] : '';
+	});
+
+	if (separator) {
+		var last = data.length - 1;
+		encoded = encoded.map(function (val, idx) {
+			return idx < last ? val + separator : val;
+		});
+	}
+
+	return encoded.join('');
+};
+
+exports.default = encode;
+
+/***/ }),
+
+/***/ "./node_modules/jsbarcode/bin/barcodes/EAN_UPC/index.js":
+/*!**************************************************************!*\
+  !*** ./node_modules/jsbarcode/bin/barcodes/EAN_UPC/index.js ***!
+  \**************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.UPCE = exports.UPC = exports.EAN2 = exports.EAN5 = exports.EAN8 = exports.EAN13 = undefined;
+
+var _EAN = __webpack_require__(/*! ./EAN13.js */ "./node_modules/jsbarcode/bin/barcodes/EAN_UPC/EAN13.js");
+
+var _EAN2 = _interopRequireDefault(_EAN);
+
+var _EAN3 = __webpack_require__(/*! ./EAN8.js */ "./node_modules/jsbarcode/bin/barcodes/EAN_UPC/EAN8.js");
+
+var _EAN4 = _interopRequireDefault(_EAN3);
+
+var _EAN5 = __webpack_require__(/*! ./EAN5.js */ "./node_modules/jsbarcode/bin/barcodes/EAN_UPC/EAN5.js");
+
+var _EAN6 = _interopRequireDefault(_EAN5);
+
+var _EAN7 = __webpack_require__(/*! ./EAN2.js */ "./node_modules/jsbarcode/bin/barcodes/EAN_UPC/EAN2.js");
+
+var _EAN8 = _interopRequireDefault(_EAN7);
+
+var _UPC = __webpack_require__(/*! ./UPC.js */ "./node_modules/jsbarcode/bin/barcodes/EAN_UPC/UPC.js");
+
+var _UPC2 = _interopRequireDefault(_UPC);
+
+var _UPCE = __webpack_require__(/*! ./UPCE.js */ "./node_modules/jsbarcode/bin/barcodes/EAN_UPC/UPCE.js");
+
+var _UPCE2 = _interopRequireDefault(_UPCE);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+exports.EAN13 = _EAN2.default;
+exports.EAN8 = _EAN4.default;
+exports.EAN5 = _EAN6.default;
+exports.EAN2 = _EAN8.default;
+exports.UPC = _UPC2.default;
+exports.UPCE = _UPCE2.default;
+
+/***/ }),
+
+/***/ "./node_modules/jsbarcode/bin/barcodes/GenericBarcode/index.js":
+/*!*********************************************************************!*\
+  !*** ./node_modules/jsbarcode/bin/barcodes/GenericBarcode/index.js ***!
+  \*********************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+	value: true
+});
+exports.GenericBarcode = undefined;
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _Barcode2 = __webpack_require__(/*! ../Barcode.js */ "./node_modules/jsbarcode/bin/barcodes/Barcode.js");
+
+var _Barcode3 = _interopRequireDefault(_Barcode2);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var GenericBarcode = function (_Barcode) {
+	_inherits(GenericBarcode, _Barcode);
+
+	function GenericBarcode(data, options) {
+		_classCallCheck(this, GenericBarcode);
+
+		return _possibleConstructorReturn(this, (GenericBarcode.__proto__ || Object.getPrototypeOf(GenericBarcode)).call(this, data, options)); // Sets this.data and this.text
+	}
+
+	// Return the corresponding binary numbers for the data provided
+
+
+	_createClass(GenericBarcode, [{
+		key: "encode",
+		value: function encode() {
+			return {
+				data: "10101010101010101010101010101010101010101",
+				text: this.text
+			};
+		}
+
+		// Resturn true/false if the string provided is valid for this encoder
+
+	}, {
+		key: "valid",
+		value: function valid() {
+			return true;
+		}
+	}]);
+
+	return GenericBarcode;
+}(_Barcode3.default);
+
+exports.GenericBarcode = GenericBarcode;
+
+/***/ }),
+
+/***/ "./node_modules/jsbarcode/bin/barcodes/ITF/ITF.js":
+/*!********************************************************!*\
+  !*** ./node_modules/jsbarcode/bin/barcodes/ITF/ITF.js ***!
+  \********************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+	value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _constants = __webpack_require__(/*! ./constants */ "./node_modules/jsbarcode/bin/barcodes/ITF/constants.js");
+
+var _Barcode2 = __webpack_require__(/*! ../Barcode */ "./node_modules/jsbarcode/bin/barcodes/Barcode.js");
+
+var _Barcode3 = _interopRequireDefault(_Barcode2);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var ITF = function (_Barcode) {
+	_inherits(ITF, _Barcode);
+
+	function ITF() {
+		_classCallCheck(this, ITF);
+
+		return _possibleConstructorReturn(this, (ITF.__proto__ || Object.getPrototypeOf(ITF)).apply(this, arguments));
+	}
+
+	_createClass(ITF, [{
+		key: 'valid',
+		value: function valid() {
+			return this.data.search(/^([0-9]{2})+$/) !== -1;
+		}
+	}, {
+		key: 'encode',
+		value: function encode() {
+			var _this2 = this;
+
+			// Calculate all the digit pairs
+			var encoded = this.data.match(/.{2}/g).map(function (pair) {
+				return _this2.encodePair(pair);
+			}).join('');
+
+			return {
+				data: _constants.START_BIN + encoded + _constants.END_BIN,
+				text: this.text
+			};
+		}
+
+		// Calculate the data of a number pair
+
+	}, {
+		key: 'encodePair',
+		value: function encodePair(pair) {
+			var second = _constants.BINARIES[pair[1]];
+
+			return _constants.BINARIES[pair[0]].split('').map(function (first, idx) {
+				return (first === '1' ? '111' : '1') + (second[idx] === '1' ? '000' : '0');
+			}).join('');
+		}
+	}]);
+
+	return ITF;
+}(_Barcode3.default);
+
+exports.default = ITF;
+
+/***/ }),
+
+/***/ "./node_modules/jsbarcode/bin/barcodes/ITF/ITF14.js":
+/*!**********************************************************!*\
+  !*** ./node_modules/jsbarcode/bin/barcodes/ITF/ITF14.js ***!
+  \**********************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+	value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _ITF2 = __webpack_require__(/*! ./ITF */ "./node_modules/jsbarcode/bin/barcodes/ITF/ITF.js");
+
+var _ITF3 = _interopRequireDefault(_ITF2);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+// Calculate the checksum digit
+var checksum = function checksum(data) {
+	var res = data.substr(0, 13).split('').map(function (num) {
+		return parseInt(num, 10);
+	}).reduce(function (sum, n, idx) {
+		return sum + n * (3 - idx % 2 * 2);
+	}, 0);
+
+	return Math.ceil(res / 10) * 10 - res;
+};
+
+var ITF14 = function (_ITF) {
+	_inherits(ITF14, _ITF);
+
+	function ITF14(data, options) {
+		_classCallCheck(this, ITF14);
+
+		// Add checksum if it does not exist
+		if (data.search(/^[0-9]{13}$/) !== -1) {
+			data += checksum(data);
+		}
+		return _possibleConstructorReturn(this, (ITF14.__proto__ || Object.getPrototypeOf(ITF14)).call(this, data, options));
+	}
+
+	_createClass(ITF14, [{
+		key: 'valid',
+		value: function valid() {
+			return this.data.search(/^[0-9]{14}$/) !== -1 && +this.data[13] === checksum(this.data);
+		}
+	}]);
+
+	return ITF14;
+}(_ITF3.default);
+
+exports.default = ITF14;
+
+/***/ }),
+
+/***/ "./node_modules/jsbarcode/bin/barcodes/ITF/constants.js":
+/*!**************************************************************!*\
+  !*** ./node_modules/jsbarcode/bin/barcodes/ITF/constants.js ***!
+  \**************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+	value: true
+});
+var START_BIN = exports.START_BIN = '1010';
+var END_BIN = exports.END_BIN = '11101';
+
+var BINARIES = exports.BINARIES = ['00110', '10001', '01001', '11000', '00101', '10100', '01100', '00011', '10010', '01010'];
+
+/***/ }),
+
+/***/ "./node_modules/jsbarcode/bin/barcodes/ITF/index.js":
+/*!**********************************************************!*\
+  !*** ./node_modules/jsbarcode/bin/barcodes/ITF/index.js ***!
+  \**********************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.ITF14 = exports.ITF = undefined;
+
+var _ITF = __webpack_require__(/*! ./ITF */ "./node_modules/jsbarcode/bin/barcodes/ITF/ITF.js");
+
+var _ITF2 = _interopRequireDefault(_ITF);
+
+var _ITF3 = __webpack_require__(/*! ./ITF14 */ "./node_modules/jsbarcode/bin/barcodes/ITF/ITF14.js");
+
+var _ITF4 = _interopRequireDefault(_ITF3);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+exports.ITF = _ITF2.default;
+exports.ITF14 = _ITF4.default;
+
+/***/ }),
+
+/***/ "./node_modules/jsbarcode/bin/barcodes/MSI/MSI.js":
+/*!********************************************************!*\
+  !*** ./node_modules/jsbarcode/bin/barcodes/MSI/MSI.js ***!
+  \********************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+	value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _Barcode2 = __webpack_require__(/*! ../Barcode.js */ "./node_modules/jsbarcode/bin/barcodes/Barcode.js");
+
+var _Barcode3 = _interopRequireDefault(_Barcode2);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; } // Encoding documentation
+// https://en.wikipedia.org/wiki/MSI_Barcode#Character_set_and_binary_lookup
+
+var MSI = function (_Barcode) {
+	_inherits(MSI, _Barcode);
+
+	function MSI(data, options) {
+		_classCallCheck(this, MSI);
+
+		return _possibleConstructorReturn(this, (MSI.__proto__ || Object.getPrototypeOf(MSI)).call(this, data, options));
+	}
+
+	_createClass(MSI, [{
+		key: "encode",
+		value: function encode() {
+			// Start bits
+			var ret = "110";
+
+			for (var i = 0; i < this.data.length; i++) {
+				// Convert the character to binary (always 4 binary digits)
+				var digit = parseInt(this.data[i]);
+				var bin = digit.toString(2);
+				bin = addZeroes(bin, 4 - bin.length);
+
+				// Add 100 for every zero and 110 for every 1
+				for (var b = 0; b < bin.length; b++) {
+					ret += bin[b] == "0" ? "100" : "110";
+				}
+			}
+
+			// End bits
+			ret += "1001";
+
+			return {
+				data: ret,
+				text: this.text
+			};
+		}
+	}, {
+		key: "valid",
+		value: function valid() {
+			return this.data.search(/^[0-9]+$/) !== -1;
+		}
+	}]);
+
+	return MSI;
+}(_Barcode3.default);
+
+function addZeroes(number, n) {
+	for (var i = 0; i < n; i++) {
+		number = "0" + number;
+	}
+	return number;
+}
+
+exports.default = MSI;
+
+/***/ }),
+
+/***/ "./node_modules/jsbarcode/bin/barcodes/MSI/MSI10.js":
+/*!**********************************************************!*\
+  !*** ./node_modules/jsbarcode/bin/barcodes/MSI/MSI10.js ***!
+  \**********************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+	value: true
+});
+
+var _MSI2 = __webpack_require__(/*! ./MSI.js */ "./node_modules/jsbarcode/bin/barcodes/MSI/MSI.js");
+
+var _MSI3 = _interopRequireDefault(_MSI2);
+
+var _checksums = __webpack_require__(/*! ./checksums.js */ "./node_modules/jsbarcode/bin/barcodes/MSI/checksums.js");
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var MSI10 = function (_MSI) {
+	_inherits(MSI10, _MSI);
+
+	function MSI10(data, options) {
+		_classCallCheck(this, MSI10);
+
+		return _possibleConstructorReturn(this, (MSI10.__proto__ || Object.getPrototypeOf(MSI10)).call(this, data + (0, _checksums.mod10)(data), options));
+	}
+
+	return MSI10;
+}(_MSI3.default);
+
+exports.default = MSI10;
+
+/***/ }),
+
+/***/ "./node_modules/jsbarcode/bin/barcodes/MSI/MSI1010.js":
+/*!************************************************************!*\
+  !*** ./node_modules/jsbarcode/bin/barcodes/MSI/MSI1010.js ***!
+  \************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+	value: true
+});
+
+var _MSI2 = __webpack_require__(/*! ./MSI.js */ "./node_modules/jsbarcode/bin/barcodes/MSI/MSI.js");
+
+var _MSI3 = _interopRequireDefault(_MSI2);
+
+var _checksums = __webpack_require__(/*! ./checksums.js */ "./node_modules/jsbarcode/bin/barcodes/MSI/checksums.js");
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var MSI1010 = function (_MSI) {
+	_inherits(MSI1010, _MSI);
+
+	function MSI1010(data, options) {
+		_classCallCheck(this, MSI1010);
+
+		data += (0, _checksums.mod10)(data);
+		data += (0, _checksums.mod10)(data);
+		return _possibleConstructorReturn(this, (MSI1010.__proto__ || Object.getPrototypeOf(MSI1010)).call(this, data, options));
+	}
+
+	return MSI1010;
+}(_MSI3.default);
+
+exports.default = MSI1010;
+
+/***/ }),
+
+/***/ "./node_modules/jsbarcode/bin/barcodes/MSI/MSI11.js":
+/*!**********************************************************!*\
+  !*** ./node_modules/jsbarcode/bin/barcodes/MSI/MSI11.js ***!
+  \**********************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+	value: true
+});
+
+var _MSI2 = __webpack_require__(/*! ./MSI.js */ "./node_modules/jsbarcode/bin/barcodes/MSI/MSI.js");
+
+var _MSI3 = _interopRequireDefault(_MSI2);
+
+var _checksums = __webpack_require__(/*! ./checksums.js */ "./node_modules/jsbarcode/bin/barcodes/MSI/checksums.js");
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var MSI11 = function (_MSI) {
+	_inherits(MSI11, _MSI);
+
+	function MSI11(data, options) {
+		_classCallCheck(this, MSI11);
+
+		return _possibleConstructorReturn(this, (MSI11.__proto__ || Object.getPrototypeOf(MSI11)).call(this, data + (0, _checksums.mod11)(data), options));
+	}
+
+	return MSI11;
+}(_MSI3.default);
+
+exports.default = MSI11;
+
+/***/ }),
+
+/***/ "./node_modules/jsbarcode/bin/barcodes/MSI/MSI1110.js":
+/*!************************************************************!*\
+  !*** ./node_modules/jsbarcode/bin/barcodes/MSI/MSI1110.js ***!
+  \************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+	value: true
+});
+
+var _MSI2 = __webpack_require__(/*! ./MSI.js */ "./node_modules/jsbarcode/bin/barcodes/MSI/MSI.js");
+
+var _MSI3 = _interopRequireDefault(_MSI2);
+
+var _checksums = __webpack_require__(/*! ./checksums.js */ "./node_modules/jsbarcode/bin/barcodes/MSI/checksums.js");
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var MSI1110 = function (_MSI) {
+	_inherits(MSI1110, _MSI);
+
+	function MSI1110(data, options) {
+		_classCallCheck(this, MSI1110);
+
+		data += (0, _checksums.mod11)(data);
+		data += (0, _checksums.mod10)(data);
+		return _possibleConstructorReturn(this, (MSI1110.__proto__ || Object.getPrototypeOf(MSI1110)).call(this, data, options));
+	}
+
+	return MSI1110;
+}(_MSI3.default);
+
+exports.default = MSI1110;
+
+/***/ }),
+
+/***/ "./node_modules/jsbarcode/bin/barcodes/MSI/checksums.js":
+/*!**************************************************************!*\
+  !*** ./node_modules/jsbarcode/bin/barcodes/MSI/checksums.js ***!
+  \**************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+	value: true
+});
+exports.mod10 = mod10;
+exports.mod11 = mod11;
+function mod10(number) {
+	var sum = 0;
+	for (var i = 0; i < number.length; i++) {
+		var n = parseInt(number[i]);
+		if ((i + number.length) % 2 === 0) {
+			sum += n;
+		} else {
+			sum += n * 2 % 10 + Math.floor(n * 2 / 10);
+		}
+	}
+	return (10 - sum % 10) % 10;
+}
+
+function mod11(number) {
+	var sum = 0;
+	var weights = [2, 3, 4, 5, 6, 7];
+	for (var i = 0; i < number.length; i++) {
+		var n = parseInt(number[number.length - 1 - i]);
+		sum += weights[i % weights.length] * n;
+	}
+	return (11 - sum % 11) % 11;
+}
+
+/***/ }),
+
+/***/ "./node_modules/jsbarcode/bin/barcodes/MSI/index.js":
+/*!**********************************************************!*\
+  !*** ./node_modules/jsbarcode/bin/barcodes/MSI/index.js ***!
+  \**********************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.MSI1110 = exports.MSI1010 = exports.MSI11 = exports.MSI10 = exports.MSI = undefined;
+
+var _MSI = __webpack_require__(/*! ./MSI.js */ "./node_modules/jsbarcode/bin/barcodes/MSI/MSI.js");
+
+var _MSI2 = _interopRequireDefault(_MSI);
+
+var _MSI3 = __webpack_require__(/*! ./MSI10.js */ "./node_modules/jsbarcode/bin/barcodes/MSI/MSI10.js");
+
+var _MSI4 = _interopRequireDefault(_MSI3);
+
+var _MSI5 = __webpack_require__(/*! ./MSI11.js */ "./node_modules/jsbarcode/bin/barcodes/MSI/MSI11.js");
+
+var _MSI6 = _interopRequireDefault(_MSI5);
+
+var _MSI7 = __webpack_require__(/*! ./MSI1010.js */ "./node_modules/jsbarcode/bin/barcodes/MSI/MSI1010.js");
+
+var _MSI8 = _interopRequireDefault(_MSI7);
+
+var _MSI9 = __webpack_require__(/*! ./MSI1110.js */ "./node_modules/jsbarcode/bin/barcodes/MSI/MSI1110.js");
+
+var _MSI10 = _interopRequireDefault(_MSI9);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+exports.MSI = _MSI2.default;
+exports.MSI10 = _MSI4.default;
+exports.MSI11 = _MSI6.default;
+exports.MSI1010 = _MSI8.default;
+exports.MSI1110 = _MSI10.default;
+
+/***/ }),
+
+/***/ "./node_modules/jsbarcode/bin/barcodes/codabar/index.js":
+/*!**************************************************************!*\
+  !*** ./node_modules/jsbarcode/bin/barcodes/codabar/index.js ***!
+  \**************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+	value: true
+});
+exports.codabar = undefined;
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _Barcode2 = __webpack_require__(/*! ../Barcode.js */ "./node_modules/jsbarcode/bin/barcodes/Barcode.js");
+
+var _Barcode3 = _interopRequireDefault(_Barcode2);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; } // Encoding specification:
+// http://www.barcodeisland.com/codabar.phtml
+
+var codabar = function (_Barcode) {
+	_inherits(codabar, _Barcode);
+
+	function codabar(data, options) {
+		_classCallCheck(this, codabar);
+
+		if (data.search(/^[0-9\-\$\:\.\+\/]+$/) === 0) {
+			data = "A" + data + "A";
+		}
+
+		var _this = _possibleConstructorReturn(this, (codabar.__proto__ || Object.getPrototypeOf(codabar)).call(this, data.toUpperCase(), options));
+
+		_this.text = _this.options.text || _this.text.replace(/[A-D]/g, '');
+		return _this;
+	}
+
+	_createClass(codabar, [{
+		key: "valid",
+		value: function valid() {
+			return this.data.search(/^[A-D][0-9\-\$\:\.\+\/]+[A-D]$/) !== -1;
+		}
+	}, {
+		key: "encode",
+		value: function encode() {
+			var result = [];
+			var encodings = this.getEncodings();
+			for (var i = 0; i < this.data.length; i++) {
+				result.push(encodings[this.data.charAt(i)]);
+				// for all characters except the last, append a narrow-space ("0")
+				if (i !== this.data.length - 1) {
+					result.push("0");
+				}
+			}
+			return {
+				text: this.text,
+				data: result.join('')
+			};
+		}
+	}, {
+		key: "getEncodings",
+		value: function getEncodings() {
+			return {
+				"0": "101010011",
+				"1": "101011001",
+				"2": "101001011",
+				"3": "110010101",
+				"4": "101101001",
+				"5": "110101001",
+				"6": "100101011",
+				"7": "100101101",
+				"8": "100110101",
+				"9": "110100101",
+				"-": "101001101",
+				"$": "101100101",
+				":": "1101011011",
+				"/": "1101101011",
+				".": "1101101101",
+				"+": "101100110011",
+				"A": "1011001001",
+				"B": "1001001011",
+				"C": "1010010011",
+				"D": "1010011001"
+			};
+		}
+	}]);
+
+	return codabar;
+}(_Barcode3.default);
+
+exports.codabar = codabar;
+
+/***/ }),
+
+/***/ "./node_modules/jsbarcode/bin/barcodes/index.js":
+/*!******************************************************!*\
+  !*** ./node_modules/jsbarcode/bin/barcodes/index.js ***!
+  \******************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+	value: true
+});
+
+var _CODE = __webpack_require__(/*! ./CODE39/ */ "./node_modules/jsbarcode/bin/barcodes/CODE39/index.js");
+
+var _CODE2 = __webpack_require__(/*! ./CODE128/ */ "./node_modules/jsbarcode/bin/barcodes/CODE128/index.js");
+
+var _EAN_UPC = __webpack_require__(/*! ./EAN_UPC/ */ "./node_modules/jsbarcode/bin/barcodes/EAN_UPC/index.js");
+
+var _ITF = __webpack_require__(/*! ./ITF/ */ "./node_modules/jsbarcode/bin/barcodes/ITF/index.js");
+
+var _MSI = __webpack_require__(/*! ./MSI/ */ "./node_modules/jsbarcode/bin/barcodes/MSI/index.js");
+
+var _pharmacode = __webpack_require__(/*! ./pharmacode/ */ "./node_modules/jsbarcode/bin/barcodes/pharmacode/index.js");
+
+var _codabar = __webpack_require__(/*! ./codabar */ "./node_modules/jsbarcode/bin/barcodes/codabar/index.js");
+
+var _GenericBarcode = __webpack_require__(/*! ./GenericBarcode/ */ "./node_modules/jsbarcode/bin/barcodes/GenericBarcode/index.js");
+
+exports.default = {
+	CODE39: _CODE.CODE39,
+	CODE128: _CODE2.CODE128, CODE128A: _CODE2.CODE128A, CODE128B: _CODE2.CODE128B, CODE128C: _CODE2.CODE128C,
+	EAN13: _EAN_UPC.EAN13, EAN8: _EAN_UPC.EAN8, EAN5: _EAN_UPC.EAN5, EAN2: _EAN_UPC.EAN2, UPC: _EAN_UPC.UPC, UPCE: _EAN_UPC.UPCE,
+	ITF14: _ITF.ITF14,
+	ITF: _ITF.ITF,
+	MSI: _MSI.MSI, MSI10: _MSI.MSI10, MSI11: _MSI.MSI11, MSI1010: _MSI.MSI1010, MSI1110: _MSI.MSI1110,
+	pharmacode: _pharmacode.pharmacode,
+	codabar: _codabar.codabar,
+	GenericBarcode: _GenericBarcode.GenericBarcode
+};
+
+/***/ }),
+
+/***/ "./node_modules/jsbarcode/bin/barcodes/pharmacode/index.js":
+/*!*****************************************************************!*\
+  !*** ./node_modules/jsbarcode/bin/barcodes/pharmacode/index.js ***!
+  \*****************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+	value: true
+});
+exports.pharmacode = undefined;
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _Barcode2 = __webpack_require__(/*! ../Barcode.js */ "./node_modules/jsbarcode/bin/barcodes/Barcode.js");
+
+var _Barcode3 = _interopRequireDefault(_Barcode2);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; } // Encoding documentation
+// http://www.gomaro.ch/ftproot/Laetus_PHARMA-CODE.pdf
+
+var pharmacode = function (_Barcode) {
+	_inherits(pharmacode, _Barcode);
+
+	function pharmacode(data, options) {
+		_classCallCheck(this, pharmacode);
+
+		var _this = _possibleConstructorReturn(this, (pharmacode.__proto__ || Object.getPrototypeOf(pharmacode)).call(this, data, options));
+
+		_this.number = parseInt(data, 10);
+		return _this;
+	}
+
+	_createClass(pharmacode, [{
+		key: "encode",
+		value: function encode() {
+			var z = this.number;
+			var result = "";
+
+			// http://i.imgur.com/RMm4UDJ.png
+			// (source: http://www.gomaro.ch/ftproot/Laetus_PHARMA-CODE.pdf, page: 34)
+			while (!isNaN(z) && z != 0) {
+				if (z % 2 === 0) {
+					// Even
+					result = "11100" + result;
+					z = (z - 2) / 2;
+				} else {
+					// Odd
+					result = "100" + result;
+					z = (z - 1) / 2;
+				}
+			}
+
+			// Remove the two last zeroes
+			result = result.slice(0, -2);
+
+			return {
+				data: result,
+				text: this.text
+			};
+		}
+	}, {
+		key: "valid",
+		value: function valid() {
+			return this.number >= 3 && this.number <= 131070;
+		}
+	}]);
+
+	return pharmacode;
+}(_Barcode3.default);
+
+exports.pharmacode = pharmacode;
+
+/***/ }),
+
+/***/ "./node_modules/jsbarcode/bin/exceptions/ErrorHandler.js":
+/*!***************************************************************!*\
+  !*** ./node_modules/jsbarcode/bin/exceptions/ErrorHandler.js ***!
+  \***************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+	value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+/*eslint no-console: 0 */
+
+var ErrorHandler = function () {
+	function ErrorHandler(api) {
+		_classCallCheck(this, ErrorHandler);
+
+		this.api = api;
+	}
+
+	_createClass(ErrorHandler, [{
+		key: "handleCatch",
+		value: function handleCatch(e) {
+			// If babel supported extending of Error in a correct way instanceof would be used here
+			if (e.name === "InvalidInputException") {
+				if (this.api._options.valid !== this.api._defaults.valid) {
+					this.api._options.valid(false);
+				} else {
+					throw e.message;
+				}
+			} else {
+				throw e;
+			}
+
+			this.api.render = function () {};
+		}
+	}, {
+		key: "wrapBarcodeCall",
+		value: function wrapBarcodeCall(func) {
+			try {
+				var result = func.apply(undefined, arguments);
+				this.api._options.valid(true);
+				return result;
+			} catch (e) {
+				this.handleCatch(e);
+
+				return this.api;
+			}
+		}
+	}]);
+
+	return ErrorHandler;
+}();
+
+exports.default = ErrorHandler;
+
+/***/ }),
+
+/***/ "./node_modules/jsbarcode/bin/exceptions/exceptions.js":
+/*!*************************************************************!*\
+  !*** ./node_modules/jsbarcode/bin/exceptions/exceptions.js ***!
+  \*************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+	value: true
+});
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var InvalidInputException = function (_Error) {
+	_inherits(InvalidInputException, _Error);
+
+	function InvalidInputException(symbology, input) {
+		_classCallCheck(this, InvalidInputException);
+
+		var _this = _possibleConstructorReturn(this, (InvalidInputException.__proto__ || Object.getPrototypeOf(InvalidInputException)).call(this));
+
+		_this.name = "InvalidInputException";
+
+		_this.symbology = symbology;
+		_this.input = input;
+
+		_this.message = '"' + _this.input + '" is not a valid input for ' + _this.symbology;
+		return _this;
+	}
+
+	return InvalidInputException;
+}(Error);
+
+var InvalidElementException = function (_Error2) {
+	_inherits(InvalidElementException, _Error2);
+
+	function InvalidElementException() {
+		_classCallCheck(this, InvalidElementException);
+
+		var _this2 = _possibleConstructorReturn(this, (InvalidElementException.__proto__ || Object.getPrototypeOf(InvalidElementException)).call(this));
+
+		_this2.name = "InvalidElementException";
+		_this2.message = "Not supported type to render on";
+		return _this2;
+	}
+
+	return InvalidElementException;
+}(Error);
+
+var NoElementException = function (_Error3) {
+	_inherits(NoElementException, _Error3);
+
+	function NoElementException() {
+		_classCallCheck(this, NoElementException);
+
+		var _this3 = _possibleConstructorReturn(this, (NoElementException.__proto__ || Object.getPrototypeOf(NoElementException)).call(this));
+
+		_this3.name = "NoElementException";
+		_this3.message = "No element to render on.";
+		return _this3;
+	}
+
+	return NoElementException;
+}(Error);
+
+exports.InvalidInputException = InvalidInputException;
+exports.InvalidElementException = InvalidElementException;
+exports.NoElementException = NoElementException;
+
+/***/ }),
+
+/***/ "./node_modules/jsbarcode/bin/help/fixOptions.js":
+/*!*******************************************************!*\
+  !*** ./node_modules/jsbarcode/bin/help/fixOptions.js ***!
+  \*******************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+	value: true
+});
+exports.default = fixOptions;
+
+
+function fixOptions(options) {
+	// Fix the margins
+	options.marginTop = options.marginTop || options.margin;
+	options.marginBottom = options.marginBottom || options.margin;
+	options.marginRight = options.marginRight || options.margin;
+	options.marginLeft = options.marginLeft || options.margin;
+
+	return options;
+}
+
+/***/ }),
+
+/***/ "./node_modules/jsbarcode/bin/help/getOptionsFromElement.js":
+/*!******************************************************************!*\
+  !*** ./node_modules/jsbarcode/bin/help/getOptionsFromElement.js ***!
+  \******************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+	value: true
+});
+
+var _optionsFromStrings = __webpack_require__(/*! ./optionsFromStrings.js */ "./node_modules/jsbarcode/bin/help/optionsFromStrings.js");
+
+var _optionsFromStrings2 = _interopRequireDefault(_optionsFromStrings);
+
+var _defaults = __webpack_require__(/*! ../options/defaults.js */ "./node_modules/jsbarcode/bin/options/defaults.js");
+
+var _defaults2 = _interopRequireDefault(_defaults);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function getOptionsFromElement(element) {
+	var options = {};
+	for (var property in _defaults2.default) {
+		if (_defaults2.default.hasOwnProperty(property)) {
+			// jsbarcode-*
+			if (element.hasAttribute("jsbarcode-" + property.toLowerCase())) {
+				options[property] = element.getAttribute("jsbarcode-" + property.toLowerCase());
+			}
+
+			// data-*
+			if (element.hasAttribute("data-" + property.toLowerCase())) {
+				options[property] = element.getAttribute("data-" + property.toLowerCase());
+			}
+		}
+	}
+
+	options["value"] = element.getAttribute("jsbarcode-value") || element.getAttribute("data-value");
+
+	// Since all atributes are string they need to be converted to integers
+	options = (0, _optionsFromStrings2.default)(options);
+
+	return options;
+}
+
+exports.default = getOptionsFromElement;
+
+/***/ }),
+
+/***/ "./node_modules/jsbarcode/bin/help/getRenderProperties.js":
+/*!****************************************************************!*\
+  !*** ./node_modules/jsbarcode/bin/help/getRenderProperties.js ***!
+  \****************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+	value: true
+});
+
+var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }; /* global HTMLImageElement */
+/* global HTMLCanvasElement */
+/* global SVGElement */
+
+var _getOptionsFromElement = __webpack_require__(/*! ./getOptionsFromElement.js */ "./node_modules/jsbarcode/bin/help/getOptionsFromElement.js");
+
+var _getOptionsFromElement2 = _interopRequireDefault(_getOptionsFromElement);
+
+var _renderers = __webpack_require__(/*! ../renderers */ "./node_modules/jsbarcode/bin/renderers/index.js");
+
+var _renderers2 = _interopRequireDefault(_renderers);
+
+var _exceptions = __webpack_require__(/*! ../exceptions/exceptions.js */ "./node_modules/jsbarcode/bin/exceptions/exceptions.js");
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+// Takes an element and returns an object with information about how
+// it should be rendered
+// This could also return an array with these objects
+// {
+//   element: The element that the renderer should draw on
+//   renderer: The name of the renderer
+//   afterRender (optional): If something has to done after the renderer
+//     completed, calls afterRender (function)
+//   options (optional): Options that can be defined in the element
+// }
+
+function getRenderProperties(element) {
+	// If the element is a string, query select call again
+	if (typeof element === "string") {
+		return querySelectedRenderProperties(element);
+	}
+	// If element is array. Recursivly call with every object in the array
+	else if (Array.isArray(element)) {
+			var returnArray = [];
+			for (var i = 0; i < element.length; i++) {
+				returnArray.push(getRenderProperties(element[i]));
+			}
+			return returnArray;
+		}
+		// If element, render on canvas and set the uri as src
+		else if (typeof HTMLCanvasElement !== 'undefined' && element instanceof HTMLImageElement) {
+				return newCanvasRenderProperties(element);
+			}
+			// If SVG
+			else if (element && element.nodeName === 'svg' || typeof SVGElement !== 'undefined' && element instanceof SVGElement) {
+					return {
+						element: element,
+						options: (0, _getOptionsFromElement2.default)(element),
+						renderer: _renderers2.default.SVGRenderer
+					};
+				}
+				// If canvas (in browser)
+				else if (typeof HTMLCanvasElement !== 'undefined' && element instanceof HTMLCanvasElement) {
+						return {
+							element: element,
+							options: (0, _getOptionsFromElement2.default)(element),
+							renderer: _renderers2.default.CanvasRenderer
+						};
+					}
+					// If canvas (in node)
+					else if (element && element.getContext) {
+							return {
+								element: element,
+								renderer: _renderers2.default.CanvasRenderer
+							};
+						} else if (element && (typeof element === "undefined" ? "undefined" : _typeof(element)) === 'object' && !element.nodeName) {
+							return {
+								element: element,
+								renderer: _renderers2.default.ObjectRenderer
+							};
+						} else {
+							throw new _exceptions.InvalidElementException();
+						}
+}
+
+function querySelectedRenderProperties(string) {
+	var selector = document.querySelectorAll(string);
+	if (selector.length === 0) {
+		return undefined;
+	} else {
+		var returnArray = [];
+		for (var i = 0; i < selector.length; i++) {
+			returnArray.push(getRenderProperties(selector[i]));
+		}
+		return returnArray;
+	}
+}
+
+function newCanvasRenderProperties(imgElement) {
+	var canvas = document.createElement('canvas');
+	return {
+		element: canvas,
+		options: (0, _getOptionsFromElement2.default)(imgElement),
+		renderer: _renderers2.default.CanvasRenderer,
+		afterRender: function afterRender() {
+			imgElement.setAttribute("src", canvas.toDataURL());
+		}
+	};
+}
+
+exports.default = getRenderProperties;
+
+/***/ }),
+
+/***/ "./node_modules/jsbarcode/bin/help/linearizeEncodings.js":
+/*!***************************************************************!*\
+  !*** ./node_modules/jsbarcode/bin/help/linearizeEncodings.js ***!
+  \***************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+	value: true
+});
+exports.default = linearizeEncodings;
+
+// Encodings can be nestled like [[1-1, 1-2], 2, [3-1, 3-2]
+// Convert to [1-1, 1-2, 2, 3-1, 3-2]
+
+function linearizeEncodings(encodings) {
+	var linearEncodings = [];
+	function nextLevel(encoded) {
+		if (Array.isArray(encoded)) {
+			for (var i = 0; i < encoded.length; i++) {
+				nextLevel(encoded[i]);
+			}
+		} else {
+			encoded.text = encoded.text || "";
+			encoded.data = encoded.data || "";
+			linearEncodings.push(encoded);
+		}
+	}
+	nextLevel(encodings);
+
+	return linearEncodings;
+}
+
+/***/ }),
+
+/***/ "./node_modules/jsbarcode/bin/help/merge.js":
+/*!**************************************************!*\
+  !*** ./node_modules/jsbarcode/bin/help/merge.js ***!
+  \**************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
+
+exports.default = function (old, replaceObj) {
+  return _extends({}, old, replaceObj);
+};
+
+/***/ }),
+
+/***/ "./node_modules/jsbarcode/bin/help/optionsFromStrings.js":
+/*!***************************************************************!*\
+  !*** ./node_modules/jsbarcode/bin/help/optionsFromStrings.js ***!
+  \***************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+	value: true
+});
+exports.default = optionsFromStrings;
+
+// Convert string to integers/booleans where it should be
+
+function optionsFromStrings(options) {
+	var intOptions = ["width", "height", "textMargin", "fontSize", "margin", "marginTop", "marginBottom", "marginLeft", "marginRight"];
+
+	for (var intOption in intOptions) {
+		if (intOptions.hasOwnProperty(intOption)) {
+			intOption = intOptions[intOption];
+			if (typeof options[intOption] === "string") {
+				options[intOption] = parseInt(options[intOption], 10);
+			}
+		}
+	}
+
+	if (typeof options["displayValue"] === "string") {
+		options["displayValue"] = options["displayValue"] != "false";
+	}
+
+	return options;
+}
+
+/***/ }),
+
+/***/ "./node_modules/jsbarcode/bin/options/defaults.js":
+/*!********************************************************!*\
+  !*** ./node_modules/jsbarcode/bin/options/defaults.js ***!
+  \********************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+	value: true
+});
+var defaults = {
+	width: 2,
+	height: 100,
+	format: "auto",
+	displayValue: true,
+	fontOptions: "",
+	font: "monospace",
+	text: undefined,
+	textAlign: "center",
+	textPosition: "bottom",
+	textMargin: 2,
+	fontSize: 20,
+	background: "#ffffff",
+	lineColor: "#000000",
+	margin: 10,
+	marginTop: undefined,
+	marginBottom: undefined,
+	marginLeft: undefined,
+	marginRight: undefined,
+	valid: function valid() {}
+};
+
+exports.default = defaults;
+
+/***/ }),
+
+/***/ "./node_modules/jsbarcode/bin/renderers/canvas.js":
+/*!********************************************************!*\
+  !*** ./node_modules/jsbarcode/bin/renderers/canvas.js ***!
+  \********************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+	value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _merge = __webpack_require__(/*! ../help/merge.js */ "./node_modules/jsbarcode/bin/help/merge.js");
+
+var _merge2 = _interopRequireDefault(_merge);
+
+var _shared = __webpack_require__(/*! ./shared.js */ "./node_modules/jsbarcode/bin/renderers/shared.js");
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var CanvasRenderer = function () {
+	function CanvasRenderer(canvas, encodings, options) {
+		_classCallCheck(this, CanvasRenderer);
+
+		this.canvas = canvas;
+		this.encodings = encodings;
+		this.options = options;
+	}
+
+	_createClass(CanvasRenderer, [{
+		key: "render",
+		value: function render() {
+			// Abort if the browser does not support HTML5 canvas
+			if (!this.canvas.getContext) {
+				throw new Error('The browser does not support canvas.');
+			}
+
+			this.prepareCanvas();
+			for (var i = 0; i < this.encodings.length; i++) {
+				var encodingOptions = (0, _merge2.default)(this.options, this.encodings[i].options);
+
+				this.drawCanvasBarcode(encodingOptions, this.encodings[i]);
+				this.drawCanvasText(encodingOptions, this.encodings[i]);
+
+				this.moveCanvasDrawing(this.encodings[i]);
+			}
+
+			this.restoreCanvas();
+		}
+	}, {
+		key: "prepareCanvas",
+		value: function prepareCanvas() {
+			// Get the canvas context
+			var ctx = this.canvas.getContext("2d");
+
+			ctx.save();
+
+			(0, _shared.calculateEncodingAttributes)(this.encodings, this.options, ctx);
+			var totalWidth = (0, _shared.getTotalWidthOfEncodings)(this.encodings);
+			var maxHeight = (0, _shared.getMaximumHeightOfEncodings)(this.encodings);
+
+			this.canvas.width = totalWidth + this.options.marginLeft + this.options.marginRight;
+
+			this.canvas.height = maxHeight;
+
+			// Paint the canvas
+			ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+			if (this.options.background) {
+				ctx.fillStyle = this.options.background;
+				ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+			}
+
+			ctx.translate(this.options.marginLeft, 0);
+		}
+	}, {
+		key: "drawCanvasBarcode",
+		value: function drawCanvasBarcode(options, encoding) {
+			// Get the canvas context
+			var ctx = this.canvas.getContext("2d");
+
+			var binary = encoding.data;
+
+			// Creates the barcode out of the encoded binary
+			var yFrom;
+			if (options.textPosition == "top") {
+				yFrom = options.marginTop + options.fontSize + options.textMargin;
+			} else {
+				yFrom = options.marginTop;
+			}
+
+			ctx.fillStyle = options.lineColor;
+
+			for (var b = 0; b < binary.length; b++) {
+				var x = b * options.width + encoding.barcodePadding;
+
+				if (binary[b] === "1") {
+					ctx.fillRect(x, yFrom, options.width, options.height);
+				} else if (binary[b]) {
+					ctx.fillRect(x, yFrom, options.width, options.height * binary[b]);
+				}
+			}
+		}
+	}, {
+		key: "drawCanvasText",
+		value: function drawCanvasText(options, encoding) {
+			// Get the canvas context
+			var ctx = this.canvas.getContext("2d");
+
+			var font = options.fontOptions + " " + options.fontSize + "px " + options.font;
+
+			// Draw the text if displayValue is set
+			if (options.displayValue) {
+				var x, y;
+
+				if (options.textPosition == "top") {
+					y = options.marginTop + options.fontSize - options.textMargin;
+				} else {
+					y = options.height + options.textMargin + options.marginTop + options.fontSize;
+				}
+
+				ctx.font = font;
+
+				// Draw the text in the correct X depending on the textAlign option
+				if (options.textAlign == "left" || encoding.barcodePadding > 0) {
+					x = 0;
+					ctx.textAlign = 'left';
+				} else if (options.textAlign == "right") {
+					x = encoding.width - 1;
+					ctx.textAlign = 'right';
+				}
+				// In all other cases, center the text
+				else {
+						x = encoding.width / 2;
+						ctx.textAlign = 'center';
+					}
+
+				ctx.fillText(encoding.text, x, y);
+			}
+		}
+	}, {
+		key: "moveCanvasDrawing",
+		value: function moveCanvasDrawing(encoding) {
+			var ctx = this.canvas.getContext("2d");
+
+			ctx.translate(encoding.width, 0);
+		}
+	}, {
+		key: "restoreCanvas",
+		value: function restoreCanvas() {
+			// Get the canvas context
+			var ctx = this.canvas.getContext("2d");
+
+			ctx.restore();
+		}
+	}]);
+
+	return CanvasRenderer;
+}();
+
+exports.default = CanvasRenderer;
+
+/***/ }),
+
+/***/ "./node_modules/jsbarcode/bin/renderers/index.js":
+/*!*******************************************************!*\
+  !*** ./node_modules/jsbarcode/bin/renderers/index.js ***!
+  \*******************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+var _canvas = __webpack_require__(/*! ./canvas.js */ "./node_modules/jsbarcode/bin/renderers/canvas.js");
+
+var _canvas2 = _interopRequireDefault(_canvas);
+
+var _svg = __webpack_require__(/*! ./svg.js */ "./node_modules/jsbarcode/bin/renderers/svg.js");
+
+var _svg2 = _interopRequireDefault(_svg);
+
+var _object = __webpack_require__(/*! ./object.js */ "./node_modules/jsbarcode/bin/renderers/object.js");
+
+var _object2 = _interopRequireDefault(_object);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+exports.default = { CanvasRenderer: _canvas2.default, SVGRenderer: _svg2.default, ObjectRenderer: _object2.default };
+
+/***/ }),
+
+/***/ "./node_modules/jsbarcode/bin/renderers/object.js":
+/*!********************************************************!*\
+  !*** ./node_modules/jsbarcode/bin/renderers/object.js ***!
+  \********************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+	value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var ObjectRenderer = function () {
+	function ObjectRenderer(object, encodings, options) {
+		_classCallCheck(this, ObjectRenderer);
+
+		this.object = object;
+		this.encodings = encodings;
+		this.options = options;
+	}
+
+	_createClass(ObjectRenderer, [{
+		key: "render",
+		value: function render() {
+			this.object.encodings = this.encodings;
+		}
+	}]);
+
+	return ObjectRenderer;
+}();
+
+exports.default = ObjectRenderer;
+
+/***/ }),
+
+/***/ "./node_modules/jsbarcode/bin/renderers/shared.js":
+/*!********************************************************!*\
+  !*** ./node_modules/jsbarcode/bin/renderers/shared.js ***!
+  \********************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+	value: true
+});
+exports.getTotalWidthOfEncodings = exports.calculateEncodingAttributes = exports.getBarcodePadding = exports.getEncodingHeight = exports.getMaximumHeightOfEncodings = undefined;
+
+var _merge = __webpack_require__(/*! ../help/merge.js */ "./node_modules/jsbarcode/bin/help/merge.js");
+
+var _merge2 = _interopRequireDefault(_merge);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function getEncodingHeight(encoding, options) {
+	return options.height + (options.displayValue && encoding.text.length > 0 ? options.fontSize + options.textMargin : 0) + options.marginTop + options.marginBottom;
+}
+
+function getBarcodePadding(textWidth, barcodeWidth, options) {
+	if (options.displayValue && barcodeWidth < textWidth) {
+		if (options.textAlign == "center") {
+			return Math.floor((textWidth - barcodeWidth) / 2);
+		} else if (options.textAlign == "left") {
+			return 0;
+		} else if (options.textAlign == "right") {
+			return Math.floor(textWidth - barcodeWidth);
+		}
+	}
+	return 0;
+}
+
+function calculateEncodingAttributes(encodings, barcodeOptions, context) {
+	for (var i = 0; i < encodings.length; i++) {
+		var encoding = encodings[i];
+		var options = (0, _merge2.default)(barcodeOptions, encoding.options);
+
+		// Calculate the width of the encoding
+		var textWidth;
+		if (options.displayValue) {
+			textWidth = messureText(encoding.text, options, context);
+		} else {
+			textWidth = 0;
+		}
+
+		var barcodeWidth = encoding.data.length * options.width;
+		encoding.width = Math.ceil(Math.max(textWidth, barcodeWidth));
+
+		encoding.height = getEncodingHeight(encoding, options);
+
+		encoding.barcodePadding = getBarcodePadding(textWidth, barcodeWidth, options);
+	}
+}
+
+function getTotalWidthOfEncodings(encodings) {
+	var totalWidth = 0;
+	for (var i = 0; i < encodings.length; i++) {
+		totalWidth += encodings[i].width;
+	}
+	return totalWidth;
+}
+
+function getMaximumHeightOfEncodings(encodings) {
+	var maxHeight = 0;
+	for (var i = 0; i < encodings.length; i++) {
+		if (encodings[i].height > maxHeight) {
+			maxHeight = encodings[i].height;
+		}
+	}
+	return maxHeight;
+}
+
+function messureText(string, options, context) {
+	var ctx;
+
+	if (context) {
+		ctx = context;
+	} else if (typeof document !== "undefined") {
+		ctx = document.createElement("canvas").getContext("2d");
+	} else {
+		// If the text cannot be messured we will return 0.
+		// This will make some barcode with big text render incorrectly
+		return 0;
+	}
+	ctx.font = options.fontOptions + " " + options.fontSize + "px " + options.font;
+
+	// Calculate the width of the encoding
+	var size = ctx.measureText(string).width;
+
+	return size;
+}
+
+exports.getMaximumHeightOfEncodings = getMaximumHeightOfEncodings;
+exports.getEncodingHeight = getEncodingHeight;
+exports.getBarcodePadding = getBarcodePadding;
+exports.calculateEncodingAttributes = calculateEncodingAttributes;
+exports.getTotalWidthOfEncodings = getTotalWidthOfEncodings;
+
+/***/ }),
+
+/***/ "./node_modules/jsbarcode/bin/renderers/svg.js":
+/*!*****************************************************!*\
+  !*** ./node_modules/jsbarcode/bin/renderers/svg.js ***!
+  \*****************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+	value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _merge = __webpack_require__(/*! ../help/merge.js */ "./node_modules/jsbarcode/bin/help/merge.js");
+
+var _merge2 = _interopRequireDefault(_merge);
+
+var _shared = __webpack_require__(/*! ./shared.js */ "./node_modules/jsbarcode/bin/renderers/shared.js");
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var svgns = "http://www.w3.org/2000/svg";
+
+var SVGRenderer = function () {
+	function SVGRenderer(svg, encodings, options) {
+		_classCallCheck(this, SVGRenderer);
+
+		this.svg = svg;
+		this.encodings = encodings;
+		this.options = options;
+		this.document = options.xmlDocument || document;
+	}
+
+	_createClass(SVGRenderer, [{
+		key: "render",
+		value: function render() {
+			var currentX = this.options.marginLeft;
+
+			this.prepareSVG();
+			for (var i = 0; i < this.encodings.length; i++) {
+				var encoding = this.encodings[i];
+				var encodingOptions = (0, _merge2.default)(this.options, encoding.options);
+
+				var group = this.createGroup(currentX, encodingOptions.marginTop, this.svg);
+
+				this.setGroupOptions(group, encodingOptions);
+
+				this.drawSvgBarcode(group, encodingOptions, encoding);
+				this.drawSVGText(group, encodingOptions, encoding);
+
+				currentX += encoding.width;
+			}
+		}
+	}, {
+		key: "prepareSVG",
+		value: function prepareSVG() {
+			// Clear the SVG
+			while (this.svg.firstChild) {
+				this.svg.removeChild(this.svg.firstChild);
+			}
+
+			(0, _shared.calculateEncodingAttributes)(this.encodings, this.options);
+			var totalWidth = (0, _shared.getTotalWidthOfEncodings)(this.encodings);
+			var maxHeight = (0, _shared.getMaximumHeightOfEncodings)(this.encodings);
+
+			var width = totalWidth + this.options.marginLeft + this.options.marginRight;
+			this.setSvgAttributes(width, maxHeight);
+
+			if (this.options.background) {
+				this.drawRect(0, 0, width, maxHeight, this.svg).setAttribute("style", "fill:" + this.options.background + ";");
+			}
+		}
+	}, {
+		key: "drawSvgBarcode",
+		value: function drawSvgBarcode(parent, options, encoding) {
+			var binary = encoding.data;
+
+			// Creates the barcode out of the encoded binary
+			var yFrom;
+			if (options.textPosition == "top") {
+				yFrom = options.fontSize + options.textMargin;
+			} else {
+				yFrom = 0;
+			}
+
+			var barWidth = 0;
+			var x = 0;
+			for (var b = 0; b < binary.length; b++) {
+				x = b * options.width + encoding.barcodePadding;
+
+				if (binary[b] === "1") {
+					barWidth++;
+				} else if (barWidth > 0) {
+					this.drawRect(x - options.width * barWidth, yFrom, options.width * barWidth, options.height, parent);
+					barWidth = 0;
+				}
+			}
+
+			// Last draw is needed since the barcode ends with 1
+			if (barWidth > 0) {
+				this.drawRect(x - options.width * (barWidth - 1), yFrom, options.width * barWidth, options.height, parent);
+			}
+		}
+	}, {
+		key: "drawSVGText",
+		value: function drawSVGText(parent, options, encoding) {
+			var textElem = this.document.createElementNS(svgns, 'text');
+
+			// Draw the text if displayValue is set
+			if (options.displayValue) {
+				var x, y;
+
+				textElem.setAttribute("style", "font:" + options.fontOptions + " " + options.fontSize + "px " + options.font);
+
+				if (options.textPosition == "top") {
+					y = options.fontSize - options.textMargin;
+				} else {
+					y = options.height + options.textMargin + options.fontSize;
+				}
+
+				// Draw the text in the correct X depending on the textAlign option
+				if (options.textAlign == "left" || encoding.barcodePadding > 0) {
+					x = 0;
+					textElem.setAttribute("text-anchor", "start");
+				} else if (options.textAlign == "right") {
+					x = encoding.width - 1;
+					textElem.setAttribute("text-anchor", "end");
+				}
+				// In all other cases, center the text
+				else {
+						x = encoding.width / 2;
+						textElem.setAttribute("text-anchor", "middle");
+					}
+
+				textElem.setAttribute("x", x);
+				textElem.setAttribute("y", y);
+
+				textElem.appendChild(this.document.createTextNode(encoding.text));
+
+				parent.appendChild(textElem);
+			}
+		}
+	}, {
+		key: "setSvgAttributes",
+		value: function setSvgAttributes(width, height) {
+			var svg = this.svg;
+			svg.setAttribute("width", width + "px");
+			svg.setAttribute("height", height + "px");
+			svg.setAttribute("x", "0px");
+			svg.setAttribute("y", "0px");
+			svg.setAttribute("viewBox", "0 0 " + width + " " + height);
+
+			svg.setAttribute("xmlns", svgns);
+			svg.setAttribute("version", "1.1");
+
+			svg.setAttribute("style", "transform: translate(0,0)");
+		}
+	}, {
+		key: "createGroup",
+		value: function createGroup(x, y, parent) {
+			var group = this.document.createElementNS(svgns, 'g');
+			group.setAttribute("transform", "translate(" + x + ", " + y + ")");
+
+			parent.appendChild(group);
+
+			return group;
+		}
+	}, {
+		key: "setGroupOptions",
+		value: function setGroupOptions(group, options) {
+			group.setAttribute("style", "fill:" + options.lineColor + ";");
+		}
+	}, {
+		key: "drawRect",
+		value: function drawRect(x, y, width, height, parent) {
+			var rect = this.document.createElementNS(svgns, 'rect');
+
+			rect.setAttribute("x", x);
+			rect.setAttribute("y", y);
+			rect.setAttribute("width", width);
+			rect.setAttribute("height", height);
+
+			parent.appendChild(rect);
+
+			return rect;
+		}
+	}]);
+
+	return SVGRenderer;
+}();
+
+exports.default = SVGRenderer;
 
 /***/ }),
 
@@ -37080,6 +41359,36 @@ if(false) {}
 
 /***/ }),
 
+/***/ "./node_modules/style-loader/index.js!./node_modules/css-loader/index.js?!./node_modules/vue-loader/lib/loaders/stylePostLoader.js!./node_modules/postcss-loader/src/index.js?!./node_modules/vue-loader/lib/index.js?!./resources/js/components/Articulo.vue?vue&type=style&index=0&lang=css&":
+/*!******************************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** ./node_modules/style-loader!./node_modules/css-loader??ref--5-1!./node_modules/vue-loader/lib/loaders/stylePostLoader.js!./node_modules/postcss-loader/src??ref--5-2!./node_modules/vue-loader/lib??vue-loader-options!./resources/js/components/Articulo.vue?vue&type=style&index=0&lang=css& ***!
+  \******************************************************************************************************************************************************************************************************************************************************************************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+
+var content = __webpack_require__(/*! !../../../node_modules/css-loader??ref--5-1!../../../node_modules/vue-loader/lib/loaders/stylePostLoader.js!../../../node_modules/postcss-loader/src??ref--5-2!../../../node_modules/vue-loader/lib??vue-loader-options!./Articulo.vue?vue&type=style&index=0&lang=css& */ "./node_modules/css-loader/index.js?!./node_modules/vue-loader/lib/loaders/stylePostLoader.js!./node_modules/postcss-loader/src/index.js?!./node_modules/vue-loader/lib/index.js?!./resources/js/components/Articulo.vue?vue&type=style&index=0&lang=css&");
+
+if(typeof content === 'string') content = [[module.i, content, '']];
+
+var transform;
+var insertInto;
+
+
+
+var options = {"hmr":true}
+
+options.transform = transform
+options.insertInto = undefined;
+
+var update = __webpack_require__(/*! ../../../node_modules/style-loader/lib/addStyles.js */ "./node_modules/style-loader/lib/addStyles.js")(content, options);
+
+if(content.locals) module.exports = content.locals;
+
+if(false) {}
+
+/***/ }),
+
 /***/ "./node_modules/style-loader/lib/addStyles.js":
 /*!****************************************************!*\
   !*** ./node_modules/style-loader/lib/addStyles.js ***!
@@ -37664,6 +41973,113 @@ exports.clearImmediate = (typeof self !== "undefined" && self.clearImmediate) ||
 
 /***/ }),
 
+/***/ "./node_modules/vue-barcode/index.js":
+/*!*******************************************!*\
+  !*** ./node_modules/vue-barcode/index.js ***!
+  \*******************************************/
+/*! no static exports found */
+/***/ (function(module, exports, __webpack_require__) {
+
+var JsBarcode = __webpack_require__(/*! jsbarcode */ "./node_modules/jsbarcode/bin/JsBarcode.js");
+
+var VueBarcode = {
+   render: function (createElement) {
+    return createElement('div', [
+      createElement(this.elementTag, {
+        style: { display: this.valid ? undefined : 'none' },
+        'class': ['vue-barcode-element']
+      }),
+      createElement('div', {
+        style: { display: this.valid ? 'none' : undefined }
+      }, this.$slots.default),
+    ]);
+  },
+  props: {
+    value: [String, Number],
+    format: [String],
+    width: [String, Number],
+    height: [String, Number],
+    text: [String, Number],
+    fontOptions : [String],
+    font: [String],
+    textAlign: [String],
+    textPosition: [String],
+    textMargin: [String, Number],
+    fontSize: [String, Number],
+    background: [String],
+    lineColor: [String],
+    margin: [String, Number],
+    marginTop: [String, Number],
+    marginBottom: [String, Number],
+    marginLeft: [String, Number],
+    marginRight: [String, Number],
+    displayValue: {
+      type:  [String, Boolean],
+      default: true
+    },
+    elementTag: {
+      type: String,
+      default: 'svg',
+      validator: function (value) {
+          return ['canvas', 'svg', 'img'].indexOf(value) !== -1
+      }
+    }
+  },
+  mounted: function(){
+    this.$watch('$props', render, { deep: true, immediate: true });
+    render.call(this);
+  },
+  data: function(){
+    return {valid: true};
+  }
+};
+
+function render(){
+  var that = this;
+
+  var settings = {
+    format: this.format,
+    height: this.height,
+    width: this.width,
+    text: this.text,
+    fontOptions: this.fontOptions,
+    font: this.font,
+    textAlign: this.textAlign,
+    textPosition: this.textPosition,
+    textMargin: this.textMargin,
+    fontSize: this.fontSize,
+    background: this.background,
+    lineColor: this.lineColor,
+    margin: this.margin,
+    marginTop: this.marginTop,
+    marginBottom: this.marginBottom,
+    marginLeft: this.marginLeft,
+    marginRight: this.marginRight,
+    valid: function (valid) {
+      that.valid = valid;
+    },
+    displayValue: this.displayValue,
+    elementTag: this.elementTag
+  };
+
+  removeUndefinedProps(settings);
+
+  JsBarcode(this.$el.querySelector('.vue-barcode-element'), String(this.value), settings);
+}
+
+function removeUndefinedProps(obj) {
+  for (var prop in obj) {
+    if (obj.hasOwnProperty(prop) && obj[prop] === undefined) {
+      delete obj[prop];
+    }
+  }
+}
+
+module.exports = VueBarcode;
+
+
+/***/ }),
+
 /***/ "./node_modules/vue-loader/lib/loaders/templateLoader.js?!./node_modules/vue-loader/lib/index.js?!./resources/js/components/Alumno.vue?vue&type=template&id=591c612f&":
 /*!*********************************************************************************************************************************************************************************************************!*\
   !*** ./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/vue-loader/lib??vue-loader-options!./resources/js/components/Alumno.vue?vue&type=template&id=591c612f& ***!
@@ -37706,50 +42122,178 @@ var render = function() {
         ]),
         _vm._v(" "),
         _c("div", { staticClass: "card-body" }, [
-          _vm._m(1),
+          _c("div", { staticClass: "form-group row" }, [
+            _c("div", { staticClass: "col-md-6" }, [
+              _c("div", { staticClass: "input-group" }, [
+                _c(
+                  "select",
+                  {
+                    directives: [
+                      {
+                        name: "model",
+                        rawName: "v-model",
+                        value: _vm.criterio,
+                        expression: "criterio"
+                      }
+                    ],
+                    staticClass: "form-control col-md-3",
+                    on: {
+                      change: function($event) {
+                        var $$selectedVal = Array.prototype.filter
+                          .call($event.target.options, function(o) {
+                            return o.selected
+                          })
+                          .map(function(o) {
+                            var val = "_value" in o ? o._value : o.value
+                            return val
+                          })
+                        _vm.criterio = $event.target.multiple
+                          ? $$selectedVal
+                          : $$selectedVal[0]
+                      }
+                    }
+                  },
+                  [
+                    _c("option", { attrs: { value: "numero_control" } }, [
+                      _vm._v("Número de control")
+                    ]),
+                    _vm._v(" "),
+                    _c("option", { attrs: { value: "nombre" } }, [
+                      _vm._v("Nombre")
+                    ])
+                  ]
+                ),
+                _vm._v(" "),
+                _c("input", {
+                  directives: [
+                    {
+                      name: "model",
+                      rawName: "v-model",
+                      value: _vm.buscar,
+                      expression: "buscar"
+                    }
+                  ],
+                  staticClass: "form-control",
+                  attrs: { type: "text", placeholder: "Texto a buscar" },
+                  domProps: { value: _vm.buscar },
+                  on: {
+                    keyup: function($event) {
+                      if (
+                        "keyCode" in $event &&
+                        _vm._k($event.keyCode, "enter", 13, $event.key, "Enter")
+                      ) {
+                        return null
+                      }
+                      return _vm.listarAlumno(1, _vm.buscar, _vm.criterio)
+                    },
+                    input: function($event) {
+                      if ($event.target.composing) {
+                        return
+                      }
+                      _vm.buscar = $event.target.value
+                    }
+                  }
+                }),
+                _vm._v(" "),
+                _c(
+                  "button",
+                  {
+                    staticClass: "btn btn-primary",
+                    attrs: { type: "submit" },
+                    on: {
+                      click: function($event) {
+                        return _vm.listarAlumno(1, _vm.buscar, _vm.criterio)
+                      }
+                    }
+                  },
+                  [_c("i", { staticClass: "fa fa-search" }), _vm._v(" Buscar")]
+                )
+              ])
+            ])
+          ]),
           _vm._v(" "),
           _c(
             "table",
             { staticClass: "table table-bordered table-striped table-sm" },
             [
-              _vm._m(2),
+              _vm._m(1),
               _vm._v(" "),
               _c(
                 "tbody",
                 _vm._l(_vm.arrayAlumno, function(alumno) {
                   return _c("tr", { key: alumno.id }, [
-                    _c("td", [
-                      _c(
-                        "button",
-                        {
-                          staticClass: "btn btn-warning btn-sm",
-                          attrs: { type: "button" },
-                          on: {
-                            click: function($event) {
-                              return _vm.abrirModal(
-                                "alumno",
-                                "actualizar",
-                                alumno
-                              )
+                    _c(
+                      "td",
+                      [
+                        _c(
+                          "button",
+                          {
+                            staticClass: "btn btn-warning btn-sm",
+                            attrs: { type: "button" },
+                            on: {
+                              click: function($event) {
+                                return _vm.abrirModal(
+                                  "alumno",
+                                  "actualizar",
+                                  alumno
+                                )
+                              }
                             }
-                          }
-                        },
-                        [_c("i", { staticClass: "icon-pencil" })]
-                      ),
-                      _vm._v("  \r\n                                    "),
-                      _vm._m(3, true)
-                    ]),
+                          },
+                          [_c("i", { staticClass: "icon-pencil" })]
+                        ),
+                        _vm._v(
+                          "  \r\n                                        "
+                        ),
+                        alumno.condicion
+                          ? [
+                              _c(
+                                "button",
+                                {
+                                  staticClass: "btn btn-danger btn-sm",
+                                  attrs: { type: "button" },
+                                  on: {
+                                    click: function($event) {
+                                      return _vm.desactivarAlumno(alumno.id)
+                                    }
+                                  }
+                                },
+                                [_c("i", { staticClass: "icon-trash" })]
+                              )
+                            ]
+                          : [
+                              _c(
+                                "button",
+                                {
+                                  staticClass: "btn btn-info btn-sm",
+                                  attrs: { type: "button" },
+                                  on: {
+                                    click: function($event) {
+                                      return _vm.activarAlumno(alumno.id)
+                                    }
+                                  }
+                                },
+                                [_c("i", { staticClass: "icon-check" })]
+                              )
+                            ]
+                      ],
+                      2
+                    ),
                     _vm._v(" "),
                     _c("td", {
                       domProps: { textContent: _vm._s(alumno.nombre) }
                     }),
                     _vm._v(" "),
                     _c("td", {
-                      domProps: { textContent: _vm._s(alumno.semestre) }
+                      domProps: { textContent: _vm._s(alumno.numero_control) }
+                    }),
+                    _vm._v(" "),
+                    _c("td", {
+                      domProps: { textContent: _vm._s(alumno.email) }
                     }),
                     _vm._v(" "),
                     _c("td", [
-                      alumno.semestre > 7
+                      alumno.condicion
                         ? _c("div", [
                             _c("span", { staticClass: "badge badge-success" }, [
                               _vm._v("Activo")
@@ -37768,7 +42312,88 @@ var render = function() {
             ]
           ),
           _vm._v(" "),
-          _vm._m(4)
+          _c("nav", [
+            _c(
+              "ul",
+              { staticClass: "pagination" },
+              [
+                _vm.pagination.current_page > 1
+                  ? _c("li", { staticClass: "page-item" }, [
+                      _c(
+                        "a",
+                        {
+                          staticClass: "page-link",
+                          attrs: { href: "#" },
+                          on: {
+                            click: function($event) {
+                              $event.preventDefault()
+                              return _vm.cambiarPagina(
+                                _vm.pagination.current_page - 1,
+                                _vm.buscar,
+                                _vm.criterio
+                              )
+                            }
+                          }
+                        },
+                        [_vm._v("Ant")]
+                      )
+                    ])
+                  : _vm._e(),
+                _vm._v(" "),
+                _vm._l(_vm.pagesNumber, function(page) {
+                  return _c(
+                    "li",
+                    {
+                      key: page,
+                      staticClass: "page-item",
+                      class: [page == _vm.isActived ? "active" : ""]
+                    },
+                    [
+                      _c("a", {
+                        staticClass: "page-link",
+                        attrs: { href: "#" },
+                        domProps: { textContent: _vm._s(page) },
+                        on: {
+                          click: function($event) {
+                            $event.preventDefault()
+                            return _vm.cambiarPagina(
+                              page,
+                              _vm.buscar,
+                              _vm.criterio
+                            )
+                          }
+                        }
+                      })
+                    ]
+                  )
+                }),
+                _vm._v(" "),
+                _vm.pagination.current_page < _vm.pagination.last_page
+                  ? _c("li", { staticClass: "page-item" }, [
+                      _c(
+                        "a",
+                        {
+                          staticClass: "page-link",
+                          attrs: { href: "#" },
+                          on: {
+                            click: function($event) {
+                              $event.preventDefault()
+                              return _vm.cambiarPagina(
+                                _vm.pagination.current_page + 1,
+                                _vm.buscar,
+                                _vm.criterio
+                              )
+                            }
+                          }
+                        },
+                        [_vm._v("Sig")]
+                      )
+                    ])
+                  : _vm._e()
+              ],
+              2
+            )
+          ])
         ])
       ])
     ]),
@@ -37839,6 +42464,44 @@ var render = function() {
                           staticClass: "col-md-3 form-control-label",
                           attrs: { for: "text-input" }
                         },
+                        [_vm._v("Número de control*")]
+                      ),
+                      _vm._v(" "),
+                      _c("div", { staticClass: "col-md-9" }, [
+                        _c("input", {
+                          directives: [
+                            {
+                              name: "model",
+                              rawName: "v-model",
+                              value: _vm.numero_control,
+                              expression: "numero_control"
+                            }
+                          ],
+                          staticClass: "form-control",
+                          attrs: {
+                            type: "text",
+                            placeholder: "Número de control"
+                          },
+                          domProps: { value: _vm.numero_control },
+                          on: {
+                            input: function($event) {
+                              if ($event.target.composing) {
+                                return
+                              }
+                              _vm.numero_control = $event.target.value
+                            }
+                          }
+                        })
+                      ])
+                    ]),
+                    _vm._v(" "),
+                    _c("div", { staticClass: "form-group row" }, [
+                      _c(
+                        "label",
+                        {
+                          staticClass: "col-md-3 form-control-label",
+                          attrs: { for: "text-input" }
+                        },
                         [_vm._v("Nombre")]
                       ),
                       _vm._v(" "),
@@ -37866,11 +42529,7 @@ var render = function() {
                               _vm.nombre = $event.target.value
                             }
                           }
-                        }),
-                        _vm._v(" "),
-                        _c("span", { staticClass: "help-block" }, [
-                          _vm._v("(*) Ingrese el nombre del alumno")
-                        ])
+                        })
                       ])
                     ]),
                     _vm._v(" "),
@@ -37879,9 +42538,9 @@ var render = function() {
                         "label",
                         {
                           staticClass: "col-md-3 form-control-label",
-                          attrs: { for: "email-input" }
+                          attrs: { for: "email" }
                         },
-                        [_vm._v("Descripción")]
+                        [_vm._v("email*")]
                       ),
                       _vm._v(" "),
                       _c("div", { staticClass: "col-md-9" }, [
@@ -37890,27 +42549,55 @@ var render = function() {
                             {
                               name: "model",
                               rawName: "v-model",
-                              value: _vm.semestre,
-                              expression: "semestre"
+                              value: _vm.email,
+                              expression: "email"
                             }
                           ],
                           staticClass: "form-control",
                           attrs: {
                             type: "email",
-                            placeholder: "Ingrese Semestre"
+                            placeholder: "Ingrese email"
                           },
-                          domProps: { value: _vm.semestre },
+                          domProps: { value: _vm.email },
                           on: {
                             input: function($event) {
                               if ($event.target.composing) {
                                 return
                               }
-                              _vm.semestre = $event.target.value
+                              _vm.email = $event.target.value
                             }
                           }
                         })
                       ])
-                    ])
+                    ]),
+                    _vm._v(" "),
+                    _c(
+                      "div",
+                      {
+                        directives: [
+                          {
+                            name: "show",
+                            rawName: "v-show",
+                            value: _vm.errorAlumno,
+                            expression: "errorAlumno"
+                          }
+                        ],
+                        staticClass: "form-group row div-error"
+                      },
+                      [
+                        _c(
+                          "div",
+                          { staticClass: "text-center text-error" },
+                          _vm._l(_vm.errorMostrarMsjAlumno, function(error) {
+                            return _c("div", {
+                              key: error,
+                              domProps: { textContent: _vm._s(error) }
+                            })
+                          }),
+                          0
+                        )
+                      ]
+                    )
                   ]
                 )
               ]),
@@ -37951,7 +42638,12 @@ var render = function() {
                       "button",
                       {
                         staticClass: "btn btn-primary",
-                        attrs: { type: "button" }
+                        attrs: { type: "button" },
+                        on: {
+                          click: function($event) {
+                            return _vm.actualizarAlumno()
+                          }
+                        }
                       },
                       [_vm._v("Actualizar")]
                     )
@@ -37961,9 +42653,7 @@ var render = function() {
           ]
         )
       ]
-    ),
-    _vm._v(" "),
-    _vm._m(5)
+    )
   ])
 }
 var staticRenderFns = [
@@ -37972,53 +42662,8 @@ var staticRenderFns = [
     var _h = _vm.$createElement
     var _c = _vm._self._c || _h
     return _c("ol", { staticClass: "breadcrumb" }, [
-      _c("li", { staticClass: "breadcrumb-item" }, [_vm._v("Home")]),
-      _vm._v(" "),
       _c("li", { staticClass: "breadcrumb-item" }, [
-        _c("a", { attrs: { href: "#" } }, [_vm._v("Admin")])
-      ]),
-      _vm._v(" "),
-      _c("li", { staticClass: "breadcrumb-item active" }, [_vm._v("Dashboard")])
-    ])
-  },
-  function() {
-    var _vm = this
-    var _h = _vm.$createElement
-    var _c = _vm._self._c || _h
-    return _c("div", { staticClass: "form-group row" }, [
-      _c("div", { staticClass: "col-md-6" }, [
-        _c("div", { staticClass: "input-group" }, [
-          _c(
-            "select",
-            {
-              staticClass: "form-control col-md-3",
-              attrs: { id: "opcion", name: "opcion" }
-            },
-            [
-              _c("option", { attrs: { value: "nombre" } }, [_vm._v("Nombre")]),
-              _vm._v(" "),
-              _c("option", { attrs: { value: "descripcion" } }, [
-                _vm._v("Descripción")
-              ])
-            ]
-          ),
-          _vm._v(" "),
-          _c("input", {
-            staticClass: "form-control",
-            attrs: {
-              type: "text",
-              id: "texto",
-              name: "texto",
-              placeholder: "Texto a buscar"
-            }
-          }),
-          _vm._v(" "),
-          _c(
-            "button",
-            { staticClass: "btn btn-primary", attrs: { type: "submit" } },
-            [_c("i", { staticClass: "fa fa-search" }), _vm._v(" Buscar")]
-          )
-        ])
+        _c("a", { attrs: { href: "/" } }, [_vm._v("Escritorio")])
       ])
     ])
   },
@@ -38032,77 +42677,360 @@ var staticRenderFns = [
         _vm._v(" "),
         _c("th", [_vm._v("Nombre")]),
         _vm._v(" "),
-        _c("th", [_vm._v("Semestre")]),
+        _c("th", [_vm._v("Número de control")]),
+        _vm._v(" "),
+        _c("th", [_vm._v("Correo Electrónico")]),
         _vm._v(" "),
         _c("th", [_vm._v("Estado")])
       ])
     ])
-  },
-  function() {
-    var _vm = this
-    var _h = _vm.$createElement
-    var _c = _vm._self._c || _h
-    return _c(
-      "button",
-      { staticClass: "btn btn-danger btn-sm", attrs: { type: "button" } },
-      [_c("i", { staticClass: "icon-trash" })]
-    )
-  },
-  function() {
-    var _vm = this
-    var _h = _vm.$createElement
-    var _c = _vm._self._c || _h
-    return _c("nav", [
-      _c("ul", { staticClass: "pagination" }, [
-        _c("li", { staticClass: "page-item" }, [
-          _c("a", { staticClass: "page-link", attrs: { href: "#" } }, [
-            _vm._v("Ant")
-          ])
+  }
+]
+render._withStripped = true
+
+
+
+/***/ }),
+
+/***/ "./node_modules/vue-loader/lib/loaders/templateLoader.js?!./node_modules/vue-loader/lib/index.js?!./resources/js/components/Articulo.vue?vue&type=template&id=28e7b674&":
+/*!***********************************************************************************************************************************************************************************************************!*\
+  !*** ./node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!./node_modules/vue-loader/lib??vue-loader-options!./resources/js/components/Articulo.vue?vue&type=template&id=28e7b674& ***!
+  \***********************************************************************************************************************************************************************************************************/
+/*! exports provided: render, staticRenderFns */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "render", function() { return render; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "staticRenderFns", function() { return staticRenderFns; });
+var render = function() {
+  var _vm = this
+  var _h = _vm.$createElement
+  var _c = _vm._self._c || _h
+  return _c("main", { staticClass: "main" }, [
+    _vm._m(0),
+    _vm._v(" "),
+    _c("div", { staticClass: "container-fluid" }, [
+      _c("div", { staticClass: "card" }, [
+        _c("div", { staticClass: "card-header" }, [
+          _c("i", { staticClass: "fa fa-align-justify" }),
+          _vm._v(" Articulos\r\n                    "),
+          _c(
+            "button",
+            {
+              staticClass: "btn btn-secondary",
+              attrs: { type: "button" },
+              on: {
+                click: function($event) {
+                  return _vm.abrirModal("articulo", "registrar")
+                }
+              }
+            },
+            [
+              _c("i", { staticClass: "icon-plus" }),
+              _vm._v(" Nuevo\r\n                    ")
+            ]
+          )
         ]),
         _vm._v(" "),
-        _c("li", { staticClass: "page-item active" }, [
-          _c("a", { staticClass: "page-link", attrs: { href: "#" } }, [
-            _vm._v("1")
-          ])
-        ]),
-        _vm._v(" "),
-        _c("li", { staticClass: "page-item" }, [
-          _c("a", { staticClass: "page-link", attrs: { href: "#" } }, [
-            _vm._v("2")
-          ])
-        ]),
-        _vm._v(" "),
-        _c("li", { staticClass: "page-item" }, [
-          _c("a", { staticClass: "page-link", attrs: { href: "#" } }, [
-            _vm._v("3")
-          ])
-        ]),
-        _vm._v(" "),
-        _c("li", { staticClass: "page-item" }, [
-          _c("a", { staticClass: "page-link", attrs: { href: "#" } }, [
-            _vm._v("4")
-          ])
-        ]),
-        _vm._v(" "),
-        _c("li", { staticClass: "page-item" }, [
-          _c("a", { staticClass: "page-link", attrs: { href: "#" } }, [
-            _vm._v("Sig")
+        _c("div", { staticClass: "card-body" }, [
+          _c("div", { staticClass: "form-group row" }, [
+            _c("div", { staticClass: "col-md-6" }, [
+              _c("div", { staticClass: "input-group" }, [
+                _c(
+                  "select",
+                  {
+                    directives: [
+                      {
+                        name: "model",
+                        rawName: "v-model",
+                        value: _vm.criterio,
+                        expression: "criterio"
+                      }
+                    ],
+                    staticClass: "form-control col-md-3",
+                    on: {
+                      change: function($event) {
+                        var $$selectedVal = Array.prototype.filter
+                          .call($event.target.options, function(o) {
+                            return o.selected
+                          })
+                          .map(function(o) {
+                            var val = "_value" in o ? o._value : o.value
+                            return val
+                          })
+                        _vm.criterio = $event.target.multiple
+                          ? $$selectedVal
+                          : $$selectedVal[0]
+                      }
+                    }
+                  },
+                  [
+                    _c("option", { attrs: { value: "nombre" } }, [
+                      _vm._v("Nombre")
+                    ]),
+                    _vm._v(" "),
+                    _c("option", { attrs: { value: "descripcion" } }, [
+                      _vm._v("Descripción")
+                    ])
+                  ]
+                ),
+                _vm._v(" "),
+                _c("input", {
+                  directives: [
+                    {
+                      name: "model",
+                      rawName: "v-model",
+                      value: _vm.buscar,
+                      expression: "buscar"
+                    }
+                  ],
+                  staticClass: "form-control",
+                  attrs: { type: "text", placeholder: "Texto a buscar" },
+                  domProps: { value: _vm.buscar },
+                  on: {
+                    keyup: function($event) {
+                      if (
+                        "keyCode" in $event &&
+                        _vm._k($event.keyCode, "enter", 13, $event.key, "Enter")
+                      ) {
+                        return null
+                      }
+                      return _vm.listarArticulo(1, _vm.buscar, _vm.criterio)
+                    },
+                    input: function($event) {
+                      if ($event.target.composing) {
+                        return
+                      }
+                      _vm.buscar = $event.target.value
+                    }
+                  }
+                }),
+                _vm._v(" "),
+                _c(
+                  "button",
+                  {
+                    staticClass: "btn btn-primary",
+                    attrs: { type: "submit" },
+                    on: {
+                      click: function($event) {
+                        return _vm.listarArticulo(1, _vm.buscar, _vm.criterio)
+                      }
+                    }
+                  },
+                  [_c("i", { staticClass: "fa fa-search" }), _vm._v(" Buscar")]
+                )
+              ])
+            ])
+          ]),
+          _vm._v(" "),
+          _c(
+            "table",
+            { staticClass: "table table-bordered table-striped table-sm" },
+            [
+              _vm._m(1),
+              _vm._v(" "),
+              _c(
+                "tbody",
+                _vm._l(_vm.arrayArticulo, function(articulo) {
+                  return _c("tr", { key: articulo.id }, [
+                    _c(
+                      "td",
+                      [
+                        _c(
+                          "button",
+                          {
+                            staticClass: "btn btn-warning btn-sm",
+                            attrs: { type: "button" },
+                            on: {
+                              click: function($event) {
+                                return _vm.abrirModal(
+                                  "articulo",
+                                  "actualizar",
+                                  articulo
+                                )
+                              }
+                            }
+                          },
+                          [_c("i", { staticClass: "icon-pencil" })]
+                        ),
+                        _vm._v(
+                          "  \r\n                                        "
+                        ),
+                        articulo.condicion
+                          ? [
+                              _c(
+                                "button",
+                                {
+                                  staticClass: "btn btn-danger btn-sm",
+                                  attrs: { type: "button" },
+                                  on: {
+                                    click: function($event) {
+                                      return _vm.desactivarArticulo(articulo.id)
+                                    }
+                                  }
+                                },
+                                [_c("i", { staticClass: "icon-trash" })]
+                              )
+                            ]
+                          : [
+                              _c(
+                                "button",
+                                {
+                                  staticClass: "btn btn-info btn-sm",
+                                  attrs: { type: "button" },
+                                  on: {
+                                    click: function($event) {
+                                      return _vm.activarArticulo(articulo.id)
+                                    }
+                                  }
+                                },
+                                [_c("i", { staticClass: "icon-check" })]
+                              )
+                            ]
+                      ],
+                      2
+                    ),
+                    _vm._v(" "),
+                    _c("td", {
+                      domProps: { textContent: _vm._s(articulo.codigo) }
+                    }),
+                    _vm._v(" "),
+                    _c("td", {
+                      domProps: { textContent: _vm._s(articulo.nombre) }
+                    }),
+                    _vm._v(" "),
+                    _c("td", {
+                      domProps: {
+                        textContent: _vm._s(articulo.nombre_categoria)
+                      }
+                    }),
+                    _vm._v(" "),
+                    _c("td", {
+                      domProps: { textContent: _vm._s(articulo.precio_venta) }
+                    }),
+                    _vm._v(" "),
+                    _c("td", {
+                      domProps: { textContent: _vm._s(articulo.stock) }
+                    }),
+                    _vm._v(" "),
+                    _c("td", {
+                      domProps: { textContent: _vm._s(articulo.descripcion) }
+                    }),
+                    _vm._v(" "),
+                    _c("td", [
+                      articulo.condicion
+                        ? _c("div", [
+                            _c("span", { staticClass: "badge badge-success" }, [
+                              _vm._v("Activo")
+                            ])
+                          ])
+                        : _c("div", [
+                            _c("span", { staticClass: "badge badge-danger" }, [
+                              _vm._v("Inactivo")
+                            ])
+                          ])
+                    ])
+                  ])
+                }),
+                0
+              )
+            ]
+          ),
+          _vm._v(" "),
+          _c("nav", [
+            _c(
+              "ul",
+              { staticClass: "pagination" },
+              [
+                _vm.pagination.current_page > 1
+                  ? _c("li", { staticClass: "page-item" }, [
+                      _c(
+                        "a",
+                        {
+                          staticClass: "page-link",
+                          attrs: { href: "#" },
+                          on: {
+                            click: function($event) {
+                              $event.preventDefault()
+                              return _vm.cambiarPagina(
+                                _vm.pagination.current_page - 1,
+                                _vm.buscar,
+                                _vm.criterio
+                              )
+                            }
+                          }
+                        },
+                        [_vm._v("Ant")]
+                      )
+                    ])
+                  : _vm._e(),
+                _vm._v(" "),
+                _vm._l(_vm.pagesNumber, function(page) {
+                  return _c(
+                    "li",
+                    {
+                      key: page,
+                      staticClass: "page-item",
+                      class: [page == _vm.isActived ? "active" : ""]
+                    },
+                    [
+                      _c("a", {
+                        staticClass: "page-link",
+                        attrs: { href: "#" },
+                        domProps: { textContent: _vm._s(page) },
+                        on: {
+                          click: function($event) {
+                            $event.preventDefault()
+                            return _vm.cambiarPagina(
+                              page,
+                              _vm.buscar,
+                              _vm.criterio
+                            )
+                          }
+                        }
+                      })
+                    ]
+                  )
+                }),
+                _vm._v(" "),
+                _vm.pagination.current_page < _vm.pagination.last_page
+                  ? _c("li", { staticClass: "page-item" }, [
+                      _c(
+                        "a",
+                        {
+                          staticClass: "page-link",
+                          attrs: { href: "#" },
+                          on: {
+                            click: function($event) {
+                              $event.preventDefault()
+                              return _vm.cambiarPagina(
+                                _vm.pagination.current_page + 1,
+                                _vm.buscar,
+                                _vm.criterio
+                              )
+                            }
+                          }
+                        },
+                        [_vm._v("Sig")]
+                      )
+                    ])
+                  : _vm._e()
+              ],
+              2
+            )
           ])
         ])
       ])
-    ])
-  },
-  function() {
-    var _vm = this
-    var _h = _vm.$createElement
-    var _c = _vm._self._c || _h
-    return _c(
+    ]),
+    _vm._v(" "),
+    _c(
       "div",
       {
         staticClass: "modal fade",
+        class: { mostrar: _vm.modal },
         staticStyle: { display: "none" },
         attrs: {
-          id: "modalEliminar",
           tabindex: "-1",
           role: "dialog",
           "aria-labelledby": "myModalLabel",
@@ -38113,24 +43041,26 @@ var staticRenderFns = [
         _c(
           "div",
           {
-            staticClass: "modal-dialog modal-danger",
+            staticClass: "modal-dialog modal-primary modal-lg",
             attrs: { role: "document" }
           },
           [
             _c("div", { staticClass: "modal-content" }, [
               _c("div", { staticClass: "modal-header" }, [
-                _c("h4", { staticClass: "modal-title" }, [
-                  _vm._v("Eliminar Alumno")
-                ]),
+                _c("h4", {
+                  staticClass: "modal-title",
+                  domProps: { textContent: _vm._s(_vm.tituloModal) }
+                }),
                 _vm._v(" "),
                 _c(
                   "button",
                   {
                     staticClass: "close",
-                    attrs: {
-                      type: "button",
-                      "data-dismiss": "modal",
-                      "aria-label": "Close"
+                    attrs: { type: "button", "aria-label": "Close" },
+                    on: {
+                      click: function($event) {
+                        return _vm.cerrarModal()
+                      }
                     }
                   },
                   [
@@ -38142,7 +43072,311 @@ var staticRenderFns = [
               ]),
               _vm._v(" "),
               _c("div", { staticClass: "modal-body" }, [
-                _c("p", [_vm._v("Estas seguro de eliminar la alumno?")])
+                _c(
+                  "form",
+                  {
+                    staticClass: "form-horizontal",
+                    attrs: {
+                      action: "",
+                      method: "post",
+                      enctype: "multipart/form-data"
+                    }
+                  },
+                  [
+                    _c("div", { staticClass: "form-group row" }, [
+                      _c(
+                        "label",
+                        {
+                          staticClass: "col-md-3 form-control-label",
+                          attrs: { for: "text-input" }
+                        },
+                        [_vm._v("Categoria*")]
+                      ),
+                      _vm._v(" "),
+                      _c("div", { staticClass: "col-md-9" }, [
+                        _c(
+                          "select",
+                          {
+                            directives: [
+                              {
+                                name: "model",
+                                rawName: "v-model",
+                                value: _vm.idcategoria,
+                                expression: "idcategoria"
+                              }
+                            ],
+                            staticClass: "form-control",
+                            on: {
+                              change: function($event) {
+                                var $$selectedVal = Array.prototype.filter
+                                  .call($event.target.options, function(o) {
+                                    return o.selected
+                                  })
+                                  .map(function(o) {
+                                    var val = "_value" in o ? o._value : o.value
+                                    return val
+                                  })
+                                _vm.idcategoria = $event.target.multiple
+                                  ? $$selectedVal
+                                  : $$selectedVal[0]
+                              }
+                            }
+                          },
+                          [
+                            _c(
+                              "option",
+                              { attrs: { value: "0", disabled: "" } },
+                              [_vm._v("Seleccione")]
+                            ),
+                            _vm._v(" "),
+                            _vm._l(_vm.arrayCategoria, function(categoria) {
+                              return _c("option", {
+                                key: categoria.id,
+                                domProps: {
+                                  value: categoria.id,
+                                  textContent: _vm._s(categoria.nombre)
+                                }
+                              })
+                            })
+                          ],
+                          2
+                        )
+                      ])
+                    ]),
+                    _vm._v(" "),
+                    _c("div", { staticClass: "form-group row" }, [
+                      _c(
+                        "label",
+                        {
+                          staticClass: "col-md-3 form-control-label",
+                          attrs: { for: "text-input" }
+                        },
+                        [_vm._v("Código")]
+                      ),
+                      _vm._v(" "),
+                      _c(
+                        "div",
+                        { staticClass: "col-md-9" },
+                        [
+                          _c("input", {
+                            directives: [
+                              {
+                                name: "model",
+                                rawName: "v-model",
+                                value: _vm.codigo,
+                                expression: "codigo"
+                              }
+                            ],
+                            staticClass: "form-control",
+                            attrs: {
+                              type: "text",
+                              placeholder: "Código de barras"
+                            },
+                            domProps: { value: _vm.codigo },
+                            on: {
+                              input: function($event) {
+                                if ($event.target.composing) {
+                                  return
+                                }
+                                _vm.codigo = $event.target.value
+                              }
+                            }
+                          }),
+                          _vm._v(" "),
+                          _c(
+                            "barcode",
+                            {
+                              attrs: {
+                                value: _vm.codigo,
+                                options: { format: "EAN-13" }
+                              }
+                            },
+                            [
+                              _vm._v(
+                                "\r\n                                        Generando código de barras...\r\n                                    "
+                              )
+                            ]
+                          )
+                        ],
+                        1
+                      )
+                    ]),
+                    _vm._v(" "),
+                    _c("div", { staticClass: "form-group row" }, [
+                      _c(
+                        "label",
+                        {
+                          staticClass: "col-md-3 form-control-label",
+                          attrs: { for: "text-input" }
+                        },
+                        [_vm._v("Nombre*")]
+                      ),
+                      _vm._v(" "),
+                      _c("div", { staticClass: "col-md-9" }, [
+                        _c("input", {
+                          directives: [
+                            {
+                              name: "model",
+                              rawName: "v-model",
+                              value: _vm.nombre,
+                              expression: "nombre"
+                            }
+                          ],
+                          staticClass: "form-control",
+                          attrs: {
+                            type: "text",
+                            placeholder: "Nombre de articulo"
+                          },
+                          domProps: { value: _vm.nombre },
+                          on: {
+                            input: function($event) {
+                              if ($event.target.composing) {
+                                return
+                              }
+                              _vm.nombre = $event.target.value
+                            }
+                          }
+                        })
+                      ])
+                    ]),
+                    _vm._v(" "),
+                    _c("div", { staticClass: "form-group row" }, [
+                      _c(
+                        "label",
+                        {
+                          staticClass: "col-md-3 form-control-label",
+                          attrs: { for: "text-input" }
+                        },
+                        [_vm._v("Precio de venta*")]
+                      ),
+                      _vm._v(" "),
+                      _c("div", { staticClass: "col-md-9" }, [
+                        _c("input", {
+                          directives: [
+                            {
+                              name: "model",
+                              rawName: "v-model",
+                              value: _vm.precio_venta,
+                              expression: "precio_venta"
+                            }
+                          ],
+                          staticClass: "form-control",
+                          attrs: { type: "text", placeholder: "" },
+                          domProps: { value: _vm.precio_venta },
+                          on: {
+                            input: function($event) {
+                              if ($event.target.composing) {
+                                return
+                              }
+                              _vm.precio_venta = $event.target.value
+                            }
+                          }
+                        })
+                      ])
+                    ]),
+                    _vm._v(" "),
+                    _c("div", { staticClass: "form-group row" }, [
+                      _c(
+                        "label",
+                        {
+                          staticClass: "col-md-3 form-control-label",
+                          attrs: { for: "text-input" }
+                        },
+                        [_vm._v("Stock*")]
+                      ),
+                      _vm._v(" "),
+                      _c("div", { staticClass: "col-md-9" }, [
+                        _c("input", {
+                          directives: [
+                            {
+                              name: "model",
+                              rawName: "v-model",
+                              value: _vm.stock,
+                              expression: "stock"
+                            }
+                          ],
+                          staticClass: "form-control",
+                          attrs: { type: "text", placeholder: "" },
+                          domProps: { value: _vm.stock },
+                          on: {
+                            input: function($event) {
+                              if ($event.target.composing) {
+                                return
+                              }
+                              _vm.stock = $event.target.value
+                            }
+                          }
+                        })
+                      ])
+                    ]),
+                    _vm._v(" "),
+                    _c("div", { staticClass: "form-group row" }, [
+                      _c(
+                        "label",
+                        {
+                          staticClass: "col-md-3 form-control-label",
+                          attrs: { for: "text-input" }
+                        },
+                        [_vm._v("Descripción")]
+                      ),
+                      _vm._v(" "),
+                      _c("div", { staticClass: "col-md-9" }, [
+                        _c("input", {
+                          directives: [
+                            {
+                              name: "model",
+                              rawName: "v-model",
+                              value: _vm.descripcion,
+                              expression: "descripcion"
+                            }
+                          ],
+                          staticClass: "form-control",
+                          attrs: {
+                            type: "text",
+                            placeholder: "Ingrese descripción"
+                          },
+                          domProps: { value: _vm.descripcion },
+                          on: {
+                            input: function($event) {
+                              if ($event.target.composing) {
+                                return
+                              }
+                              _vm.descripcion = $event.target.value
+                            }
+                          }
+                        })
+                      ])
+                    ]),
+                    _vm._v(" "),
+                    _c(
+                      "div",
+                      {
+                        directives: [
+                          {
+                            name: "show",
+                            rawName: "v-show",
+                            value: _vm.errorArticulo,
+                            expression: "errorArticulo"
+                          }
+                        ],
+                        staticClass: "form-group row div-error"
+                      },
+                      [
+                        _c(
+                          "div",
+                          { staticClass: "text-center text-error" },
+                          _vm._l(_vm.errorMostrarMsjArticulo, function(error) {
+                            return _c("div", {
+                              key: error,
+                              domProps: { textContent: _vm._s(error) }
+                            })
+                          }),
+                          0
+                        )
+                      ]
+                    )
+                  ]
+                )
               ]),
               _vm._v(" "),
               _c("div", { staticClass: "modal-footer" }, [
@@ -38150,22 +43384,89 @@ var staticRenderFns = [
                   "button",
                   {
                     staticClass: "btn btn-secondary",
-                    attrs: { type: "button", "data-dismiss": "modal" }
+                    attrs: { type: "button" },
+                    on: {
+                      click: function($event) {
+                        return _vm.cerrarModal()
+                      }
+                    }
                   },
                   [_vm._v("Cerrar")]
                 ),
                 _vm._v(" "),
-                _c(
-                  "button",
-                  { staticClass: "btn btn-danger", attrs: { type: "button" } },
-                  [_vm._v("Eliminar")]
-                )
+                _vm.tipoAccion == 1
+                  ? _c(
+                      "button",
+                      {
+                        staticClass: "btn btn-primary",
+                        attrs: { type: "button" },
+                        on: {
+                          click: function($event) {
+                            return _vm.registrarArticulo()
+                          }
+                        }
+                      },
+                      [_vm._v("Guardar")]
+                    )
+                  : _vm._e(),
+                _vm._v(" "),
+                _vm.tipoAccion == 2
+                  ? _c(
+                      "button",
+                      {
+                        staticClass: "btn btn-primary",
+                        attrs: { type: "button" },
+                        on: {
+                          click: function($event) {
+                            return _vm.actualizarArticulo()
+                          }
+                        }
+                      },
+                      [_vm._v("Actualizar")]
+                    )
+                  : _vm._e()
               ])
             ])
           ]
         )
       ]
     )
+  ])
+}
+var staticRenderFns = [
+  function() {
+    var _vm = this
+    var _h = _vm.$createElement
+    var _c = _vm._self._c || _h
+    return _c("ol", { staticClass: "breadcrumb" }, [
+      _c("li", { staticClass: "breadcrumb-item" }, [
+        _c("a", { attrs: { href: "/" } }, [_vm._v("Escritorio")])
+      ])
+    ])
+  },
+  function() {
+    var _vm = this
+    var _h = _vm.$createElement
+    var _c = _vm._self._c || _h
+    return _c("thead", [
+      _c("tr", [
+        _c("th", [_vm._v("Opciones")]),
+        _vm._v(" "),
+        _c("th", [_vm._v("Código")]),
+        _vm._v(" "),
+        _c("th", [_vm._v("Nombre")]),
+        _vm._v(" "),
+        _c("th", [_vm._v("Categoria")]),
+        _vm._v(" "),
+        _c("th", [_vm._v("Precio Venta")]),
+        _vm._v(" "),
+        _c("th", [_vm._v("Stock")]),
+        _vm._v(" "),
+        _c("th", [_vm._v("Descripción")]),
+        _vm._v(" "),
+        _c("th", [_vm._v("Estado")])
+      ])
+    ])
   }
 ]
 render._withStripped = true
@@ -38290,7 +43591,7 @@ function normalizeComponent (
 
 "use strict";
 /* WEBPACK VAR INJECTION */(function(global, setImmediate) {/*!
- * Vue.js v2.6.8
+ * Vue.js v2.6.5
  * (c) 2014-2019 Evan You
  * Released under the MIT License.
  */
@@ -38768,7 +44069,7 @@ var config = ({
  * using https://www.w3.org/TR/html53/semantics-scripting.html#potentialcustomelementname
  * skipping \u10000-\uEFFFF due to it freezing up PhantomJS
  */
-var unicodeRegExp = /a-zA-Z\u00B7\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u037D\u037F-\u1FFF\u200C-\u200D\u203F-\u2040\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD/;
+var unicodeLetters = 'a-zA-Z\u00B7\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u037D\u037F-\u1FFF\u200C-\u200D\u203F-\u2040\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD';
 
 /**
  * Check if a string starts with $ or _
@@ -38793,7 +44094,7 @@ function def (obj, key, val, enumerable) {
 /**
  * Parse simple path.
  */
-var bailRE = new RegExp(("[^" + (unicodeRegExp.source) + ".$_\\d]"));
+var bailRE = new RegExp(("[^" + unicodeLetters + ".$_\\d]"));
 function parsePath (path) {
   if (bailRE.test(path)) {
     return
@@ -39697,7 +44998,7 @@ function checkComponents (options) {
 }
 
 function validateComponentName (name) {
-  if (!new RegExp(("^[a-zA-Z][\\-\\.0-9_" + (unicodeRegExp.source) + "]*$")).test(name)) {
+  if (!new RegExp(("^[a-zA-Z][\\-\\.0-9_" + unicodeLetters + "]*$")).test(name)) {
     warn(
       'Invalid component name: "' + name + '". Component names ' +
       'should conform to valid custom element name in html5 specification.'
@@ -40112,30 +45413,23 @@ function isBoolean () {
 /*  */
 
 function handleError (err, vm, info) {
-  // Deactivate deps tracking while processing error handler to avoid possible infinite rendering.
-  // See: https://github.com/vuejs/vuex/issues/1505
-  pushTarget();
-  try {
-    if (vm) {
-      var cur = vm;
-      while ((cur = cur.$parent)) {
-        var hooks = cur.$options.errorCaptured;
-        if (hooks) {
-          for (var i = 0; i < hooks.length; i++) {
-            try {
-              var capture = hooks[i].call(cur, err, vm, info) === false;
-              if (capture) { return }
-            } catch (e) {
-              globalHandleError(e, cur, 'errorCaptured hook');
-            }
+  if (vm) {
+    var cur = vm;
+    while ((cur = cur.$parent)) {
+      var hooks = cur.$options.errorCaptured;
+      if (hooks) {
+        for (var i = 0; i < hooks.length; i++) {
+          try {
+            var capture = hooks[i].call(cur, err, vm, info) === false;
+            if (capture) { return }
+          } catch (e) {
+            globalHandleError(e, cur, 'errorCaptured hook');
           }
         }
       }
     }
-    globalHandleError(err, vm, info);
-  } finally {
-    popTarget();
   }
+  globalHandleError(err, vm, info);
 }
 
 function invokeWithErrorHandling (
@@ -40149,9 +45443,7 @@ function invokeWithErrorHandling (
   try {
     res = args ? handler.apply(context, args) : handler.call(context);
     if (res && !res._isVue && isPromise(res)) {
-      // issue #9511
-      // reassign to res to avoid catch triggering multiple times when nested calls
-      res = res.catch(function (e) { return handleError(e, vm, info + " (Promise/async)"); });
+      res.catch(function (e) { return handleError(e, vm, info + " (Promise/async)"); });
     }
   } catch (e) {
     handleError(e, vm, info);
@@ -40834,18 +46126,15 @@ function normalizeScopedSlots (
   prevSlots
 ) {
   var res;
-  var isStable = slots ? !!slots.$stable : true;
-  var key = slots && slots.$key;
   if (!slots) {
     res = {};
   } else if (slots._normalized) {
     // fast path 1: child component re-render only, parent did not change
     return slots._normalized
   } else if (
-    isStable &&
+    slots.$stable &&
     prevSlots &&
     prevSlots !== emptyObject &&
-    key === prevSlots.$key &&
     Object.keys(normalSlots).length === 0
   ) {
     // fast path 2: stable scoped slots w/ no normal slots to proxy,
@@ -40853,16 +46142,16 @@ function normalizeScopedSlots (
     return prevSlots
   } else {
     res = {};
-    for (var key$1 in slots) {
-      if (slots[key$1] && key$1[0] !== '$') {
-        res[key$1] = normalizeScopedSlot(normalSlots, key$1, slots[key$1]);
+    for (var key in slots) {
+      if (slots[key] && key[0] !== '$') {
+        res[key] = normalizeScopedSlot(normalSlots, key, slots[key]);
       }
     }
   }
   // expose normal slots on scopedSlots
-  for (var key$2 in normalSlots) {
-    if (!(key$2 in res)) {
-      res[key$2] = proxyNormalSlot(normalSlots, key$2);
+  for (var key$1 in normalSlots) {
+    if (!(key$1 in res)) {
+      res[key$1] = proxyNormalSlot(normalSlots, key$1);
     }
   }
   // avoriaz seems to mock a non-extensible $scopedSlots object
@@ -40870,8 +46159,7 @@ function normalizeScopedSlots (
   if (slots && Object.isExtensible(slots)) {
     (slots)._normalized = res;
   }
-  def(res, '$stable', isStable);
-  def(res, '$key', key);
+  def(res, '$stable', slots ? !!slots.$stable : true);
   return res
 }
 
@@ -41166,16 +46454,14 @@ function bindObjectListeners (data, value) {
 
 function resolveScopedSlots (
   fns, // see flow/vnode
-  res,
-  // the following are added in 2.6
   hasDynamicKeys,
-  contentHashKey
+  res
 ) {
   res = res || { $stable: !hasDynamicKeys };
   for (var i = 0; i < fns.length; i++) {
     var slot = fns[i];
     if (Array.isArray(slot)) {
-      resolveScopedSlots(slot, res, hasDynamicKeys);
+      resolveScopedSlots(slot, hasDynamicKeys, res);
     } else if (slot) {
       // marker for reverse proxying v-slot without scope on this.$slots
       if (slot.proxy) {
@@ -41183,9 +46469,6 @@ function resolveScopedSlots (
       }
       res[slot.key] = slot.fn;
     }
-  }
-  if (contentHashKey) {
-    (res).$key = contentHashKey;
   }
   return res
 }
@@ -41901,21 +47184,17 @@ function resolveAsyncComponent (
     return factory.resolved
   }
 
-  var owner = currentRenderingInstance;
-  if (isDef(factory.owners) && factory.owners.indexOf(owner) === -1) {
-    // already pending
-    factory.owners.push(owner);
-  }
-
   if (isTrue(factory.loading) && isDef(factory.loadingComp)) {
     return factory.loadingComp
   }
 
-  if (!isDef(factory.owners)) {
+  var owner = currentRenderingInstance;
+  if (isDef(factory.owners)) {
+    // already pending
+    factory.owners.push(owner);
+  } else {
     var owners = factory.owners = [owner];
-    var sync = true
-
-    ;(owner).$on('hook:destroyed', function () { return remove(owners, owner); });
+    var sync = true;
 
     var forceRender = function (renderCompleted) {
       for (var i = 0, l = owners.length; i < l; i++) {
@@ -42368,12 +47647,9 @@ function updateChildComponent (
   // check if there are dynamic scopedSlots (hand-written or compiled but with
   // dynamic slot names). Static scoped slots compiled from template has the
   // "$stable" marker.
-  var newScopedSlots = parentVnode.data.scopedSlots;
-  var oldScopedSlots = vm.$scopedSlots;
   var hasDynamicScopedSlot = !!(
-    (newScopedSlots && !newScopedSlots.$stable) ||
-    (oldScopedSlots !== emptyObject && !oldScopedSlots.$stable) ||
-    (newScopedSlots && vm.$scopedSlots.$key !== newScopedSlots.$key)
+    (parentVnode.data.scopedSlots && !parentVnode.data.scopedSlots.$stable) ||
+    (vm.$scopedSlots !== emptyObject && !vm.$scopedSlots.$stable)
   );
 
   // Any static slot children from the parent may have changed during parent's
@@ -43695,7 +48971,7 @@ Object.defineProperty(Vue, 'FunctionalRenderContext', {
   value: FunctionalRenderContext
 });
 
-Vue.version = '2.6.8';
+Vue.version = '2.6.5';
 
 /*  */
 
@@ -45874,7 +51150,15 @@ function updateDOMProps (oldVnode, vnode) {
       }
     }
 
-    if (key === 'value' && elm.tagName !== 'PROGRESS') {
+    // skip the update if old and new VDOM state is the same.
+    // the only exception is `value` where the DOM value may be temporarily
+    // out of sync with VDOM state due to focus, composition and modifiers.
+    // This also covers #4521 by skipping the unnecesarry `checked` update.
+    if (key !== 'value' && cur === oldProps[key]) {
+      continue
+    }
+
+    if (key === 'value') {
       // store value as _value as well since
       // non-string values will be stringified
       elm._value = cur;
@@ -45894,18 +51178,8 @@ function updateDOMProps (oldVnode, vnode) {
       while (svg.firstChild) {
         elm.appendChild(svg.firstChild);
       }
-    } else if (
-      // skip the update if old and new VDOM state is the same.
-      // `value` is handled separately because the DOM value may be temporarily
-      // out of sync with VDOM state due to focus, composition and modifiers.
-      // This  #4521 by skipping the unnecesarry `checked` update.
-      cur !== oldProps[key]
-    ) {
-      // some property updates can throw
-      // e.g. `value` on <progress> w/ non-finite value
-      try {
-        elm[key] = cur;
-      } catch (e) {}
+    } else {
+      elm[key] = cur;
     }
   }
 }
@@ -47497,7 +52771,7 @@ var isNonPhrasingTag = makeMap(
 // Regular Expressions for parsing tags and attributes
 var attribute = /^\s*([^\s"'<>\/=]+)(?:\s*(=)\s*(?:"([^"]*)"+|'([^']*)'+|([^\s"'=<>`]+)))?/;
 var dynamicArgAttribute = /^\s*((?:v-[\w-]+:|@|:|#)\[[^=]+\][^\s"'<>\/=]*)(?:\s*(=)\s*(?:"([^"]*)"+|'([^']*)'+|([^\s"'=<>`]+)))?/;
-var ncname = "[a-zA-Z_][\\-\\.0-9_a-zA-Z" + (unicodeRegExp.source) + "]*";
+var ncname = "[a-zA-Z_][\\-\\.0-9_a-zA-Z" + unicodeLetters + "]*";
 var qnameCapture = "((?:" + ncname + "\\:)?" + ncname + ")";
 var startTagOpen = new RegExp(("^<" + qnameCapture));
 var startTagClose = /^\s*(\/?)>/;
@@ -47759,7 +53033,7 @@ function parseHTML (html, options) {
         ) {
           options.warn(
             ("tag <" + (stack[i].tag) + "> has no matching end tag."),
-            { start: stack[i].start, end: stack[i].end }
+            { start: stack[i].start }
           );
         }
         if (options.end) {
@@ -47796,7 +53070,7 @@ var dynamicArgRE = /^\[.*\]$/;
 
 var argRE = /:(.*)$/;
 var bindRE = /^:|^\.|^v-bind:/;
-var modifierRE = /\.[^.\]]+(?=[^\]]*$)/g;
+var modifierRE = /\.[^.]+/g;
 
 var slotRE = /^v-slot(:|$)|^#/;
 
@@ -47973,7 +53247,7 @@ function parse (
     shouldDecodeNewlinesForHref: options.shouldDecodeNewlinesForHref,
     shouldKeepComment: options.comments,
     outputSourceRange: options.outputSourceRange,
-    start: function start (tag, attrs, unary, start$1, end) {
+    start: function start (tag, attrs, unary, start$1) {
       // check namespace.
       // inherit parent ns if there is one
       var ns = (currentParent && currentParent.ns) || platformGetTagNamespace(tag);
@@ -47992,7 +53266,6 @@ function parse (
       {
         if (options.outputSourceRange) {
           element.start = start$1;
-          element.end = end;
           element.rawAttrsMap = element.attrsList.reduce(function (cumulated, attr) {
             cumulated[attr.name] = attr;
             return cumulated
@@ -49110,13 +54383,7 @@ function genHandler (handler) {
 }
 
 function genKeyFilter (keys) {
-  return (
-    // make sure the key filters only apply to KeyboardEvents
-    // #9441: can't use 'keyCode' in $event because Chrome autofill fires fake
-    // key events that do not have keyCode property...
-    "if(!$event.type.indexOf('key')&&" +
-    (keys.map(genFilterCode).join('&&')) + ")return null;"
-  )
+  return ("if(('keyCode' in $event)&&" + (keys.map(genFilterCode).join('&&')) + ")return null;")
 }
 
 function genFilterCode (key) {
@@ -49477,68 +54744,26 @@ function genScopedSlots (
   // components with only scoped slots to skip forced updates from parent.
   // but in some cases we have to bail-out of this optimization
   // for example if the slot contains dynamic names, has v-if or v-for on them...
-  var needsForceUpdate = el.for || Object.keys(slots).some(function (key) {
+  var needsForceUpdate = Object.keys(slots).some(function (key) {
     var slot = slots[key];
-    return (
-      slot.slotTargetDynamic ||
-      slot.if ||
-      slot.for ||
-      containsSlotChild(slot) // is passing down slot from parent which may be dynamic
-    )
+    return slot.slotTargetDynamic || slot.if || slot.for
   });
-
-  // #9534: if a component with scoped slots is inside a conditional branch,
-  // it's possible for the same component to be reused but with different
-  // compiled slot content. To avoid that, we generate a unique key based on
-  // the generated code of all the slot contents.
-  var needsKey = !!el.if;
-
-  // OR when it is inside another scoped slot or v-for (the reactivity may be
-  // disconnected due to the intermediate scope variable)
-  // #9438, #9506
-  // TODO: this can be further optimized by properly analyzing in-scope bindings
-  // and skip force updating ones that do not actually use scope variables.
+  // OR when it is inside another scoped slot (the reactivity is disconnected)
+  // #9438
   if (!needsForceUpdate) {
     var parent = el.parent;
     while (parent) {
-      if (
-        (parent.slotScope && parent.slotScope !== emptySlotScopeToken) ||
-        parent.for
-      ) {
+      if (parent.slotScope && parent.slotScope !== emptySlotScopeToken) {
         needsForceUpdate = true;
         break
-      }
-      if (parent.if) {
-        needsKey = true;
       }
       parent = parent.parent;
     }
   }
 
-  var generatedSlots = Object.keys(slots)
-    .map(function (key) { return genScopedSlot(slots[key], state); })
-    .join(',');
-
-  return ("scopedSlots:_u([" + generatedSlots + "]" + (needsForceUpdate ? ",null,true" : "") + (!needsForceUpdate && needsKey ? (",null,false," + (hash(generatedSlots))) : "") + ")")
-}
-
-function hash(str) {
-  var hash = 5381;
-  var i = str.length;
-  while(i) {
-    hash = (hash * 33) ^ str.charCodeAt(--i);
-  }
-  return hash >>> 0
-}
-
-function containsSlotChild (el) {
-  if (el.type === 1) {
-    if (el.tag === 'slot') {
-      return true
-    }
-    return el.children.some(containsSlotChild)
-  }
-  return false
+  return ("scopedSlots:_u([" + (Object.keys(slots).map(function (key) {
+      return genScopedSlot(slots[key], state)
+    }).join(',')) + "]" + (needsForceUpdate ? ",true" : "") + ")")
 }
 
 function genScopedSlot (
@@ -49863,13 +55088,11 @@ function generateCodeFrame (
 
 function repeat$1 (str, n) {
   var result = '';
-  if (n > 0) {
-    while (true) { // eslint-disable-line
-      if (n & 1) { result += str; }
-      n >>>= 1;
-      if (n <= 0) { break }
-      str += str;
-    }
+  while (true) { // eslint-disable-line
+    if (n & 1) { result += str; }
+    n >>>= 1;
+    if (n <= 0) { break }
+    str += str;
   }
   return result
 }
@@ -50300,10 +55523,12 @@ window.Vue = __webpack_require__(/*! vue */ "./node_modules/vue/dist/vue.common.
  *
  * Eg. ./components/ExampleComponent.vue -> <example-component></example-component>
  */
-// const files = require.context('./', true, /\.vue$/i);
-// files.keys().map(key => Vue.component(key.split('/').pop().split('.')[0], files(key).default));
+// const files = require.context('./', true, /\.vue$/i)
+// files.keys().map(key => Vue.component(key.split('/').pop().split('.')[0], files(key).default))
+//Cada vez que se modifique este archivo 'npm run dev' debe de ejecutarse
 
 Vue.component('alumno', __webpack_require__(/*! ./components/Alumno.vue */ "./resources/js/components/Alumno.vue").default);
+Vue.component('articulo', __webpack_require__(/*! ./components/Articulo.vue */ "./resources/js/components/Articulo.vue").default);
 /**
  * Next, we will create a fresh Vue application instance and attach it to
  * the page. Then, you may begin adding components to this application
@@ -50334,8 +55559,7 @@ window._ = __webpack_require__(/*! lodash */ "./node_modules/lodash/lodash.js");
  */
 
 try {
-  window.Popper = __webpack_require__(/*! popper.js */ "./node_modules/popper.js/dist/esm/popper.js").default;
-  window.$ = window.jQuery = __webpack_require__(/*! jquery */ "./node_modules/jquery/dist/jquery.js");
+  window.Popper = __webpack_require__(/*! popper.js */ "./node_modules/popper.js/dist/esm/popper.js").default; //window.$ = window.jQuery = require('jquery');
 
   __webpack_require__(/*! bootstrap */ "./node_modules/bootstrap/dist/js/bootstrap.js");
 } catch (e) {}
@@ -50464,6 +55688,93 @@ __webpack_require__.r(__webpack_exports__);
 
 /***/ }),
 
+/***/ "./resources/js/components/Articulo.vue":
+/*!**********************************************!*\
+  !*** ./resources/js/components/Articulo.vue ***!
+  \**********************************************/
+/*! exports provided: default */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony import */ var _Articulo_vue_vue_type_template_id_28e7b674___WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./Articulo.vue?vue&type=template&id=28e7b674& */ "./resources/js/components/Articulo.vue?vue&type=template&id=28e7b674&");
+/* harmony import */ var _Articulo_vue_vue_type_script_lang_js___WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./Articulo.vue?vue&type=script&lang=js& */ "./resources/js/components/Articulo.vue?vue&type=script&lang=js&");
+/* empty/unused harmony star reexport *//* harmony import */ var _Articulo_vue_vue_type_style_index_0_lang_css___WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./Articulo.vue?vue&type=style&index=0&lang=css& */ "./resources/js/components/Articulo.vue?vue&type=style&index=0&lang=css&");
+/* harmony import */ var _node_modules_vue_loader_lib_runtime_componentNormalizer_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ../../../node_modules/vue-loader/lib/runtime/componentNormalizer.js */ "./node_modules/vue-loader/lib/runtime/componentNormalizer.js");
+
+
+
+
+
+
+/* normalize component */
+
+var component = Object(_node_modules_vue_loader_lib_runtime_componentNormalizer_js__WEBPACK_IMPORTED_MODULE_3__["default"])(
+  _Articulo_vue_vue_type_script_lang_js___WEBPACK_IMPORTED_MODULE_1__["default"],
+  _Articulo_vue_vue_type_template_id_28e7b674___WEBPACK_IMPORTED_MODULE_0__["render"],
+  _Articulo_vue_vue_type_template_id_28e7b674___WEBPACK_IMPORTED_MODULE_0__["staticRenderFns"],
+  false,
+  null,
+  null,
+  null
+  
+)
+
+/* hot reload */
+if (false) { var api; }
+component.options.__file = "resources/js/components/Articulo.vue"
+/* harmony default export */ __webpack_exports__["default"] = (component.exports);
+
+/***/ }),
+
+/***/ "./resources/js/components/Articulo.vue?vue&type=script&lang=js&":
+/*!***********************************************************************!*\
+  !*** ./resources/js/components/Articulo.vue?vue&type=script&lang=js& ***!
+  \***********************************************************************/
+/*! exports provided: default */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony import */ var _node_modules_babel_loader_lib_index_js_ref_4_0_node_modules_vue_loader_lib_index_js_vue_loader_options_Articulo_vue_vue_type_script_lang_js___WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! -!../../../node_modules/babel-loader/lib??ref--4-0!../../../node_modules/vue-loader/lib??vue-loader-options!./Articulo.vue?vue&type=script&lang=js& */ "./node_modules/babel-loader/lib/index.js?!./node_modules/vue-loader/lib/index.js?!./resources/js/components/Articulo.vue?vue&type=script&lang=js&");
+/* empty/unused harmony star reexport */ /* harmony default export */ __webpack_exports__["default"] = (_node_modules_babel_loader_lib_index_js_ref_4_0_node_modules_vue_loader_lib_index_js_vue_loader_options_Articulo_vue_vue_type_script_lang_js___WEBPACK_IMPORTED_MODULE_0__["default"]); 
+
+/***/ }),
+
+/***/ "./resources/js/components/Articulo.vue?vue&type=style&index=0&lang=css&":
+/*!*******************************************************************************!*\
+  !*** ./resources/js/components/Articulo.vue?vue&type=style&index=0&lang=css& ***!
+  \*******************************************************************************/
+/*! no static exports found */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony import */ var _node_modules_style_loader_index_js_node_modules_css_loader_index_js_ref_5_1_node_modules_vue_loader_lib_loaders_stylePostLoader_js_node_modules_postcss_loader_src_index_js_ref_5_2_node_modules_vue_loader_lib_index_js_vue_loader_options_Articulo_vue_vue_type_style_index_0_lang_css___WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! -!../../../node_modules/style-loader!../../../node_modules/css-loader??ref--5-1!../../../node_modules/vue-loader/lib/loaders/stylePostLoader.js!../../../node_modules/postcss-loader/src??ref--5-2!../../../node_modules/vue-loader/lib??vue-loader-options!./Articulo.vue?vue&type=style&index=0&lang=css& */ "./node_modules/style-loader/index.js!./node_modules/css-loader/index.js?!./node_modules/vue-loader/lib/loaders/stylePostLoader.js!./node_modules/postcss-loader/src/index.js?!./node_modules/vue-loader/lib/index.js?!./resources/js/components/Articulo.vue?vue&type=style&index=0&lang=css&");
+/* harmony import */ var _node_modules_style_loader_index_js_node_modules_css_loader_index_js_ref_5_1_node_modules_vue_loader_lib_loaders_stylePostLoader_js_node_modules_postcss_loader_src_index_js_ref_5_2_node_modules_vue_loader_lib_index_js_vue_loader_options_Articulo_vue_vue_type_style_index_0_lang_css___WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(_node_modules_style_loader_index_js_node_modules_css_loader_index_js_ref_5_1_node_modules_vue_loader_lib_loaders_stylePostLoader_js_node_modules_postcss_loader_src_index_js_ref_5_2_node_modules_vue_loader_lib_index_js_vue_loader_options_Articulo_vue_vue_type_style_index_0_lang_css___WEBPACK_IMPORTED_MODULE_0__);
+/* harmony reexport (unknown) */ for(var __WEBPACK_IMPORT_KEY__ in _node_modules_style_loader_index_js_node_modules_css_loader_index_js_ref_5_1_node_modules_vue_loader_lib_loaders_stylePostLoader_js_node_modules_postcss_loader_src_index_js_ref_5_2_node_modules_vue_loader_lib_index_js_vue_loader_options_Articulo_vue_vue_type_style_index_0_lang_css___WEBPACK_IMPORTED_MODULE_0__) if(__WEBPACK_IMPORT_KEY__ !== 'default') (function(key) { __webpack_require__.d(__webpack_exports__, key, function() { return _node_modules_style_loader_index_js_node_modules_css_loader_index_js_ref_5_1_node_modules_vue_loader_lib_loaders_stylePostLoader_js_node_modules_postcss_loader_src_index_js_ref_5_2_node_modules_vue_loader_lib_index_js_vue_loader_options_Articulo_vue_vue_type_style_index_0_lang_css___WEBPACK_IMPORTED_MODULE_0__[key]; }) }(__WEBPACK_IMPORT_KEY__));
+ /* harmony default export */ __webpack_exports__["default"] = (_node_modules_style_loader_index_js_node_modules_css_loader_index_js_ref_5_1_node_modules_vue_loader_lib_loaders_stylePostLoader_js_node_modules_postcss_loader_src_index_js_ref_5_2_node_modules_vue_loader_lib_index_js_vue_loader_options_Articulo_vue_vue_type_style_index_0_lang_css___WEBPACK_IMPORTED_MODULE_0___default.a); 
+
+/***/ }),
+
+/***/ "./resources/js/components/Articulo.vue?vue&type=template&id=28e7b674&":
+/*!*****************************************************************************!*\
+  !*** ./resources/js/components/Articulo.vue?vue&type=template&id=28e7b674& ***!
+  \*****************************************************************************/
+/*! exports provided: render, staticRenderFns */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony import */ var _node_modules_vue_loader_lib_loaders_templateLoader_js_vue_loader_options_node_modules_vue_loader_lib_index_js_vue_loader_options_Articulo_vue_vue_type_template_id_28e7b674___WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! -!../../../node_modules/vue-loader/lib/loaders/templateLoader.js??vue-loader-options!../../../node_modules/vue-loader/lib??vue-loader-options!./Articulo.vue?vue&type=template&id=28e7b674& */ "./node_modules/vue-loader/lib/loaders/templateLoader.js?!./node_modules/vue-loader/lib/index.js?!./resources/js/components/Articulo.vue?vue&type=template&id=28e7b674&");
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "render", function() { return _node_modules_vue_loader_lib_loaders_templateLoader_js_vue_loader_options_node_modules_vue_loader_lib_index_js_vue_loader_options_Articulo_vue_vue_type_template_id_28e7b674___WEBPACK_IMPORTED_MODULE_0__["render"]; });
+
+/* harmony reexport (safe) */ __webpack_require__.d(__webpack_exports__, "staticRenderFns", function() { return _node_modules_vue_loader_lib_loaders_templateLoader_js_vue_loader_options_node_modules_vue_loader_lib_index_js_vue_loader_options_Articulo_vue_vue_type_template_id_28e7b674___WEBPACK_IMPORTED_MODULE_0__["staticRenderFns"]; });
+
+
+
+/***/ }),
+
 /***/ 0:
 /*!***********************************!*\
   !*** multi ./resources/js/app.js ***!
@@ -50471,7 +55782,7 @@ __webpack_require__.r(__webpack_exports__);
 /*! no static exports found */
 /***/ (function(module, exports, __webpack_require__) {
 
-module.exports = __webpack_require__(/*! C:\xampp\htdocs\AsesoriasCobach\resources\js\app.js */"./resources/js/app.js");
+module.exports = __webpack_require__(/*! C:\xampp\htdocs\Cobach\resources\js\app.js */"./resources/js/app.js");
 
 
 /***/ })

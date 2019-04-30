@@ -17,10 +17,12 @@ window.Vue = require('vue');
  * Eg. ./components/ExampleComponent.vue -> <example-component></example-component>
  */
 
-// const files = require.context('./', true, /\.vue$/i);
-// files.keys().map(key => Vue.component(key.split('/').pop().split('.')[0], files(key).default));
+// const files = require.context('./', true, /\.vue$/i)
+// files.keys().map(key => Vue.component(key.split('/').pop().split('.')[0], files(key).default))
 
+//Cada vez que se modifique este archivo 'npm run dev' debe de ejecutarse
 Vue.component('alumno', require('./components/Alumno.vue').default);
+Vue.component('articulo', require('./components/Articulo.vue').default);
 
 /**
  * Next, we will create a fresh Vue application instance and attach it to
@@ -31,6 +33,6 @@ Vue.component('alumno', require('./components/Alumno.vue').default);
 const app = new Vue({
     el: '#app',
     data: {
-      menu : 0
+        menu : 0
     }
 });

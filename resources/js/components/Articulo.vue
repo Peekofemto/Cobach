@@ -2,13 +2,14 @@
 <main class="main">
         <!-- Breadcrumb -->
         <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="/">Escritorio</a></li></ol>
+            <li class="breadcrumb-item"><a href="/">Escritorio</a></li>
+        </ol>
         <div class="container-fluid">
             <!-- Ejemplo de tabla Listado -->
             <div class="card">
                 <div class="card-header">
-                    <i class="fa fa-align-justify"></i> Alumnos
-                    <button type="button" @click="abrirModal('alumno','registrar')" class="btn btn-secondary">
+                    <i class="fa fa-align-justify"></i> Articulos
+                    <button type="button" @click="abrirModal('articulo','registrar')" class="btn btn-secondary">
                         <i class="icon-plus"></i>&nbsp;Nuevo
                     </button>
                 </div>
@@ -17,11 +18,11 @@
                         <div class="col-md-6">
                             <div class="input-group">
                                 <select class="form-control col-md-3" v-model="criterio">
-                                <option value="numero_control">Número de control</option>
                                 <option value="nombre">Nombre</option>
+                                <option value="descripcion">Descripción</option>
                                 </select>
-                                <input type="text" v-model="buscar" @keyup.enter="listarAlumno(1, buscar, criterio)" class="form-control" placeholder="Texto a buscar">
-                                <button type="submit" @click="listarAlumno(1, buscar, criterio)" class="btn btn-primary"><i class="fa fa-search"></i> Buscar</button>
+                                <input type="text" v-model="buscar" @keyup.enter="listarArticulo(1, buscar, criterio)" class="form-control" placeholder="Texto a buscar">
+                                <button type="submit" @click="listarArticulo(1, buscar, criterio)" class="btn btn-primary"><i class="fa fa-search"></i> Buscar</button>
                             </div>
                         </div>
                     </div>
@@ -29,34 +30,40 @@
                         <thead>
                             <tr>
                                 <th>Opciones</th>
+                                <th>Código</th>
                                 <th>Nombre</th>
-                                <th>Número de control</th>
-                                <th>Correo Electrónico</th>
+                                <th>Categoria</th>
+                                <th>Precio Venta</th>
+                                <th>Stock</th>
+                                <th>Descripción</th>
                                 <th>Estado</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <tr v-for="alumno in arrayAlumno" :key="alumno.id">
+                            <tr v-for="articulo in arrayArticulo" :key="articulo.id">
                                 <td>
-                                    <button type="button" @click="abrirModal('alumno','actualizar',alumno)" class="btn btn-warning btn-sm">
+                                    <button type="button" @click="abrirModal('articulo','actualizar',articulo)" class="btn btn-warning btn-sm">
                                     <i class="icon-pencil"></i>
                                     </button> &nbsp;
-                                        <template v-if="alumno.condicion">
-                                            <button type="button" class="btn btn-danger btn-sm" @click="desactivarAlumno(alumno.id)">
+                                        <template v-if="articulo.condicion">
+                                            <button type="button" class="btn btn-danger btn-sm" @click="desactivarArticulo(articulo.id)">
                                                 <i class="icon-trash"></i>
                                             </button>
                                         </template>
                                         <template v-else>
-                                            <button type="button" class="btn btn-info btn-sm" @click="activarAlumno(alumno.id)">
+                                            <button type="button" class="btn btn-info btn-sm" @click="activarArticulo(articulo.id)">
                                                 <i class="icon-check"></i>
                                             </button>
                                         </template>
                                 </td>
-                                <td v-text="alumno.nombre"></td>
-                                <td v-text="alumno.numero_control"></td>
-                                <td v-text="alumno.email"></td>
+                                <td v-text="articulo.codigo"></td>
+                                <td v-text="articulo.nombre"></td>
+                                <td v-text="articulo.nombre_categoria"></td>
+                                <td v-text="articulo.precio_venta"></td>
+                                <td v-text="articulo.stock"></td>
+                                <td v-text="articulo.descripcion"></td>
                                 <td>
-                                    <div v-if="alumno.condicion" >
+                                    <div v-if="articulo.condicion" >
                                     <span class="badge badge-success">Activo</span>
                                     </div>
 
@@ -98,36 +105,62 @@
                     <div class="modal-body">
                         <form action="" method="post" enctype="multipart/form-data" class="form-horizontal">
                             <div class="form-group row">
-                                <label class="col-md-3 form-control-label" for="text-input">Número de control*</label>
+                                <label class="col-md-3 form-control-label" for="text-input">Categoria*</label>
                                 <div class="col-md-9">
-                                    <input type="text" v-model="numero_control" class="form-control" placeholder="Número de control">
+                                    <select class="form-control" v-model="idcategoria">
+                                        <option value="0" disabled>Seleccione</option>
+                                        <option v-for="categoria in arrayCategoria" :key="categoria.id" :value="categoria.id" v-text="categoria.nombre"></option>
+                                    </select>
                                     
                                 </div>
                             </div>
                             <div class="form-group row">
-                                <label class="col-md-3 form-control-label" for="text-input">Nombre</label>
+                                <label class="col-md-3 form-control-label" for="text-input">Código</label>
                                 <div class="col-md-9">
-                                    <input type="text" v-model="nombre" class="form-control" placeholder="Nombre del alumno">
+                                    <input type="text" v-model="codigo" class="form-control" placeholder="Código de barras">
+                                    <barcode v-bind:value="codigo" :options="{ format: 'EAN-13'}">
+                                        Generando código de barras...
+                                    </barcode>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label class="col-md-3 form-control-label" for="text-input">Nombre*</label>
+                                <div class="col-md-9">
+                                    <input type="text" v-model="nombre" class="form-control" placeholder="Nombre de articulo">
                                     
                                 </div>
                             </div>
                             <div class="form-group row">
-                                <label class="col-md-3 form-control-label" for="email">email*</label>
+                                <label class="col-md-3 form-control-label" for="text-input">Precio de venta*</label>
                                 <div class="col-md-9">
-                                    <input type="email" v-model="email" class="form-control" placeholder="Ingrese email">
+                                    <input type="text" v-model="precio_venta" class="form-control" placeholder="">
+                                    
                                 </div>
                             </div>
-                            <div v-show="errorAlumno" class="form-group row div-error">
+                            <div class="form-group row">
+                                <label class="col-md-3 form-control-label" for="text-input">Stock*</label>
+                                <div class="col-md-9">
+                                    <input type="text" v-model="stock" class="form-control" placeholder="">
+                                    
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label class="col-md-3 form-control-label" for="text-input">Descripción</label>
+                                <div class="col-md-9">
+                                    <input type="text" v-model="descripcion" class="form-control" placeholder="Ingrese descripción">
+                                </div>
+                            </div>
+                            <div v-show="errorArticulo" class="form-group row div-error">
                                 <div class="text-center text-error">
-                                    <div v-for="error in errorMostrarMsjAlumno" :key="error" v-text="error"></div>
+                                    <div v-for="error in errorMostrarMsjArticulo" :key="error" v-text="error"></div>
                                 </div>
                             </div>
                         </form>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" @click="cerrarModal()">Cerrar</button>
-                        <button type="button" v-if="tipoAccion==1" class="btn btn-primary" @click="registrarAlumno()">Guardar</button>
-                        <button type="button" v-if="tipoAccion==2" class="btn btn-primary" @click="actualizarAlumno()">Actualizar</button>
+                        <button type="button" v-if="tipoAccion==1" class="btn btn-primary" @click="registrarArticulo()">Guardar</button>
+                        <button type="button" v-if="tipoAccion==2" class="btn btn-primary" @click="actualizarArticulo()">Actualizar</button>
                     </div>
                 </div>
                 <!-- /.modal-content -->
@@ -141,19 +174,24 @@
 </template>
 
 <script>
+    import VueBarcode from 'vue-barcode';
     export default {
         data (){
             return{
-                alumno_id: 0,
+                articulo_id: 0,
+                idcategoria : 0,
+                nombre_categoria : '',
+                codigo : '',
                 nombre : '',
-                numero_control : '',
-                email : '',
-                arrayAlumno : [],
+                precio_venta : 0,
+                stock : 0,
+                descripcion : '',
+                arrayArticulo : [],
                 modal : 0,
                 tituloModal : '',
                 tipoAccion : 0,
-                errorAlumno : 0,
-                errorMostrarMsjAlumno : [],
+                errorArticulo : 0,
+                errorMostrarMsjArticulo : [],
                 pagination : {
                     'total' : 0,
                     'current_page' : 0,
@@ -164,8 +202,12 @@
                 },
                 offset : 3,
                 criterio : 'nombre',
-                buscar : ''
+                buscar : '',
+                arrayCategoria : []
             }
+        },
+        components: {
+            'barcode': VueBarcode
         },
         computed:{
             isActived: function(){
@@ -202,14 +244,14 @@
         methods : {
 
             
-            listarAlumno (page, buscar, criterio){
-                //'alumno' es la route que nos regresa los alumnos
+            listarArticulo (page, buscar, criterio){
+                //'categoria' es la route que nos regresa las categorias
                 let me = this;
-                var url = '/alumno?page=' + page + '&buscar=' + buscar + '&criterio=' + criterio;
+                var url = '/articulo?page=' + page + '&buscar=' + buscar + '&criterio=' + criterio;
                 axios.get(url).then(function (response) {
                     // handle success
                     var respuesta = response.data;
-                    me.arrayAlumno = respuesta.alumnos.data;
+                    me.arrayArticulo = respuesta.articulos.data;
                     me.pagination = respuesta.pagination;
                     console.log(response);
                 })
@@ -221,30 +263,49 @@
 
 
 
+            selectCategoria(){
+                let me = this;
+                var url = '/categoria/selectCategoria';
+                axios.get(url).then(function (response) {
+                    // handle success
+                    var respuesta = response.data;
+                    me.arrayCategoria= respuesta.categorias;
+                    //console.log(response);
+                })
+                .catch(function (error) {
+                    // handle error
+                    console.log(error);
+                });
+            },
+
+
             cambiarPagina(page, buscar, criterio){
                 let me = this;
                 //Actualiza la pagina actual
                 me.pagination.current_page = page;
                 //Envia la peticion para visualizar la data de esa pagina
-                me.listarAlumno(page, buscar, criterio);
+                me.listarArticulo(page, buscar, criterio);
             },
 
 
-            registrarAlumno(){
+            registrarArticulo(){
 
-                if(this.validarAlumno()){
+                if(this.validarArticulo()){
                     return;
                 }
 
                 let me = this;
-                //esta ruta hace referencia a la funcion store del AlumnoController
-                axios.post('/alumno/registrar',{
-                    'numero_control' : this.numero_control,
+                //esta ruta hace referencia a la funcion store del CategoriaController
+                axios.post('/articulo/registrar',{
+                    'idcategoria' : this.idcategoria,
+                    'codigo' : this.codigo,
                     'nombre' : this.nombre,
-                    'email' : this.email
+                    'stock' : this.stock,
+                    'precio_venta' : this.precio_venta,
+                    'descripcion' : this.descripcion
                 }).then(function(response) {
                     me.cerrarModal();
-                    me.listarAlumno(1, '', 'nombre');
+                    me.listarArticulo(1, '', 'nombre');
                 }).catch(function(error){
                     console.log(error);
                 });           
@@ -252,22 +313,25 @@
 
 
 
-            actualizarAlumno(){
+            actualizarArticulo(){
 
-               if (this.validarAlumno()){
+               if (this.validarArticulo()){
                     return;
                 }
                 
                 let me = this;
 
-                axios.put('/alumno/actualizar',{
-                    'numero_control': this.numero_control,
-                    'nombre': this.nombre,
-                    'email' :this.email,
-                    'id': this.alumno_id
+                axios.put('/articulo/actualizar',{
+                    'idcategoria' : this.idcategoria,
+                    'codigo' : this.codigo,
+                    'nombre' : this.nombre,
+                    'stock' : this.stock,
+                    'precio_venta' : this.precio_venta,
+                    'descripcion' : this.descripcion,
+                    'id': this.articulo_id
                 }).then(function (response) {
                     me.cerrarModal();
-                    me.listarAlumno(1, '', 'nombre');
+                    me.listarArticulo(1, '', 'nombre');
                 }).catch(function (error) {
                     console.log(error);
                 });
@@ -276,16 +340,21 @@
 
 
             cerrarModal(){
-                this.modal=0;
+                this.modal = 0;
                 this.tituloModal = '';
-                this.numero_control = '';
+                this.idcategoria = 0;
+                this.nombre_categoria = '';
+                this.codigo = '';
                 this.nombre = '';
-                this.email = '';
+                this.precio_venta = 0;
+                this.stock = 0;
+                this.descripcion = '';
+                this.errorArticulo = 0;
             },
         
 
 
-            desactivarAlumno(id){
+            desactivarArticulo(id){
                 const swalWithBootstrapButtons = Swal.mixin({
                     customClass: {
                         confirmButton: 'btn btn-success',
@@ -295,7 +364,7 @@
                     })
 
                     swalWithBootstrapButtons.fire({
-                        title: 'Estás seguro que quieres desactivar este registro?',
+                        title: 'Estás seguro que quieres desactivar este articulo?',
                         type: 'warning',
                         showCancelButton: true,
                         confirmButtonText: 'Aceptar',
@@ -306,10 +375,10 @@
 
                         let me = this;
 
-                        axios.put('/alumno/desactivar',{
+                        axios.put('/articulo/desactivar',{
                             'id': id
                         }).then(function (response) {
-                            me.listarAlumno(1, '', 'nombre');
+                            me.listarArticulo(1, '', 'nombre');
                             swalWithBootstrapButtons.fire(
                                 'Desactivado!',
                                 'El registro ha sido desactivado con éxito.',
@@ -331,7 +400,7 @@
 
 
 
-            activarAlumno(id){
+            activarArticulo(id){
                 const swalWithBootstrapButtons = Swal.mixin({
                     customClass: {
                         confirmButton: 'btn btn-success',
@@ -352,10 +421,10 @@
 
                         let me = this;
 
-                        axios.put('/alumno/activar',{
+                        axios.put('/articulo/activar',{
                             'id': id
                         }).then(function (response) {
-                            me.listarAlumno(1, '', 'nombre');
+                            me.listarArticulo(1, '', 'nombre');
                             swalWithBootstrapButtons.fire(
                                 'Activado!',
                                 'El registro ha sido activado con éxito.',
@@ -377,32 +446,40 @@
 
 
 
-            validarAlumno(){
-                this.errorAlumno = 0;
-                this.errorMostrarMsjAlumno = [];
+            validarArticulo(){
+                this.errorArticulo = 0;
+                this.errorMostrarMsjArticulo = [];
 
+                //Si no se selcciona una categoria nos tira el error
+                if(this.idcategoria==0) this.errorMostrarMsjArticulo.push("Seleccione una categoria");
                 //Si el nombre esta vacio pushamos el mensaje de error
-                if(!this.nombre)this.errorMostrarMsjAlumno.push("El nombre de la categoría no puedo estar vacio.");
+                if(!this.nombre) this.errorMostrarMsjArticulo.push("El nombre de la articulo no puedo estar vacio.");  
+                if(!this.stock) this.errorMostrarMsjArticulo.push("El stock del articulo debe der ser número y no puede estar vacio");
+                if(!this.precio_venta) this.errorMostrarMsjArticulo.push("El precio de venta del articulo debe ser un número y no debe estar vacio");
 
-                if(this.errorMostrarMsjAlumno.length) this.errorAlumno = 1;
+                if(this.errorMostrarMsjArticulo.length) this.errorArticulo = 1;
 
-                return this.errorAlumno;
+                return this.errorArticulo;
             },
 
 
 
             abrirModal(modelo, accion, data = []){
                 switch(modelo){
-                    case "alumno":
+                    case "articulo":
                     {
                         switch(accion){
                             case 'registrar':
                             {
                                 this.modal = 1;
-                                this.tituloModal = 'Registrar Alumno';
-                                this.numero_control = '';
+                                this.tituloModal = 'Registrar Articulo';
+                                this.idcategoria = 0;
+                                this.nombre_categoria = '';
+                                this.codigo = '';
                                 this.nombre = '';
-                                this.email = '';
+                                this.precio_venta = 0;
+                                this.stock = 0;
+                                this.descripcion = '';
                                 this.tipoAccion = 1;
                                 break;
                             }
@@ -411,24 +488,28 @@
                                 //console.log(data);
 
                                 this.modal = 1;
-                                this.tituloModal = 'Actualizar categoría';
+                                this.tituloModal = 'Actualizar Articulo';
                                 this.tipoAccion = 2;
-                                this.alumno_id = data['id'];
-                                this.numero_control = data['numero_control'];
+                                this.articulo_id = data['id'];
+                                this.idcategoria = data['idcategoria'];
+                                this.codigo = data['codigo'];
                                 this.nombre = data['nombre'];
-                                this.email = data['email'];
+                                this.stock = data['stock'];
+                                this.precio_venta = data['precio_venta'];
+                                this.descripcion = data['descripcion'];
                                 break;
                             }
                         }
                     }
                 }
+                this.selectCategoria()
             }
         },
 
 
 
         mounted() {
-            this.listarAlumno(1, this.buscar, this.criterio);
+            this.listarArticulo(1, this.buscar, this.criterio);
         }
     }
 </script>

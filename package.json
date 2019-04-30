@@ -21,6 +21,10 @@
         "sass": "^1.15.2",
         "sass-loader": "^7.1.0",
         "vue": "^2.5.17",
-        "vue-template-compiler": "^2.6.8"
+        "vue-template-compiler": "^2.6.4"
+    },
+    "dependencies": {
+        "vue-barcode": "^1.2.0",
+        "vue-loader": "^15.6.2"
     }
 }

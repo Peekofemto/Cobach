@@ -1,6 +1,6 @@
     @extends('principal')
     @section('contenido')
-
+    
     <template v-if="menu==0">
             <h1>Contenido del menú 0</h1>
     </template>
@@ -8,9 +8,9 @@
     <template v-if="menu==1">
             <Alumno></Alumno>
     </template>
-
+    
     <template v-if="menu==2">
-            <h1>Contenido del menú 2</h1>
+            <h1>aun no hay nada aqui</h1>
     </template>
 
     <template v-if="menu==3">
@@ -32,7 +32,7 @@
     <template v-if="menu==7">
             <h1>Contenido del menú 7</h1>
     </template>
-
+    
     <template v-if="menu==8">
             <h1>Contenido del menú 8</h1>
     </template>
@@ -52,8 +52,4 @@
     <template v-if="menu==12">
             <h1>Contenido del menú 12</h1>
     </template>
-    
-    <template v-if="menu==13">
-                <h1>Contenido del menú 12</h1>
-        </template>
     @endsection

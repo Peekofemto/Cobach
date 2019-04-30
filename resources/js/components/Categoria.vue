@@ -7,8 +7,8 @@
             <!-- Ejemplo de tabla Listado -->
             <div class="card">
                 <div class="card-header">
-                    <i class="fa fa-align-justify"></i> Alumnos
-                    <button type="button" @click="abrirModal('alumno','registrar')" class="btn btn-secondary">
+                    <i class="fa fa-align-justify"></i> Categorías
+                    <button type="button" @click="abrirModal('categoria','registrar')" class="btn btn-secondary">
                         <i class="icon-plus"></i>&nbsp;Nuevo
                     </button>
                 </div>
@@ -17,11 +17,11 @@
                         <div class="col-md-6">
                             <div class="input-group">
                                 <select class="form-control col-md-3" v-model="criterio">
-                                <option value="numero_control">Número de control</option>
                                 <option value="nombre">Nombre</option>
+                                <option value="descripcion">Descripción</option>
                                 </select>
-                                <input type="text" v-model="buscar" @keyup.enter="listarAlumno(1, buscar, criterio)" class="form-control" placeholder="Texto a buscar">
-                                <button type="submit" @click="listarAlumno(1, buscar, criterio)" class="btn btn-primary"><i class="fa fa-search"></i> Buscar</button>
+                                <input type="text" v-model="buscar" @keyup.enter="listarCategoria(1, buscar, criterio)" class="form-control" placeholder="Texto a buscar">
+                                <button type="submit" @click="listarCategoria(1, buscar, criterio)" class="btn btn-primary"><i class="fa fa-search"></i> Buscar</button>
                             </div>
                         </div>
                     </div>
@@ -30,33 +30,31 @@
                             <tr>
                                 <th>Opciones</th>
                                 <th>Nombre</th>
-                                <th>Número de control</th>
-                                <th>Correo Electrónico</th>
+                                <th>Descripción</th>
                                 <th>Estado</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <tr v-for="alumno in arrayAlumno" :key="alumno.id">
+                            <tr v-for="categoria in arrayCategoria" :key="categoria.id">
                                 <td>
-                                    <button type="button" @click="abrirModal('alumno','actualizar',alumno)" class="btn btn-warning btn-sm">
+                                    <button type="button" @click="abrirModal('categoria','actualizar',categoria)" class="btn btn-warning btn-sm">
                                     <i class="icon-pencil"></i>
                                     </button> &nbsp;
-                                        <template v-if="alumno.condicion">
-                                            <button type="button" class="btn btn-danger btn-sm" @click="desactivarAlumno(alumno.id)">
+                                        <template v-if="categoria.condicion">
+                                            <button type="button" class="btn btn-danger btn-sm" @click="desactivarCategoria(categoria.id)">
                                                 <i class="icon-trash"></i>
                                             </button>
                                         </template>
                                         <template v-else>
-                                            <button type="button" class="btn btn-info btn-sm" @click="activarAlumno(alumno.id)">
+                                            <button type="button" class="btn btn-info btn-sm" @click="activarCategoria(categoria.id)">
                                                 <i class="icon-check"></i>
                                             </button>
                                         </template>
                                 </td>
-                                <td v-text="alumno.nombre"></td>
-                                <td v-text="alumno.numero_control"></td>
-                                <td v-text="alumno.email"></td>
+                                <td v-text="categoria.nombre"></td>
+                                <td v-text="categoria.descripcion"></td>
                                 <td>
-                                    <div v-if="alumno.condicion" >
+                                    <div v-if="categoria.condicion" >
                                     <span class="badge badge-success">Activo</span>
                                     </div>
 
@@ -98,36 +96,29 @@
                     <div class="modal-body">
                         <form action="" method="post" enctype="multipart/form-data" class="form-horizontal">
                             <div class="form-group row">
-                                <label class="col-md-3 form-control-label" for="text-input">Número de control*</label>
-                                <div class="col-md-9">
-                                    <input type="text" v-model="numero_control" class="form-control" placeholder="Número de control">
-                                    
-                                </div>
-                            </div>
-                            <div class="form-group row">
                                 <label class="col-md-3 form-control-label" for="text-input">Nombre</label>
                                 <div class="col-md-9">
-                                    <input type="text" v-model="nombre" class="form-control" placeholder="Nombre del alumno">
+                                    <input type="text" v-model="nombre" class="form-control" placeholder="Nombre de categoría">
                                     
                                 </div>
                             </div>
                             <div class="form-group row">
-                                <label class="col-md-3 form-control-label" for="email">email*</label>
+                                <label class="col-md-3 form-control-label" for="text-input">Descripción</label>
                                 <div class="col-md-9">
-                                    <input type="email" v-model="email" class="form-control" placeholder="Ingrese email">
+                                    <input type="text" v-model="descripcion" class="form-control" placeholder="Ingrese descripción">
                                 </div>
                             </div>
-                            <div v-show="errorAlumno" class="form-group row div-error">
+                            <div v-show="errorCategoria" class="form-group row div-error">
                                 <div class="text-center text-error">
-                                    <div v-for="error in errorMostrarMsjAlumno" :key="error" v-text="error"></div>
+                                    <div v-for="error in errorMostrarMsjCategoria" :key="error" v-text="error"></div>
                                 </div>
                             </div>
                         </form>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" @click="cerrarModal()">Cerrar</button>
-                        <button type="button" v-if="tipoAccion==1" class="btn btn-primary" @click="registrarAlumno()">Guardar</button>
-                        <button type="button" v-if="tipoAccion==2" class="btn btn-primary" @click="actualizarAlumno()">Actualizar</button>
+                        <button type="button" v-if="tipoAccion==1" class="btn btn-primary" @click="registrarCategoria()">Guardar</button>
+                        <button type="button" v-if="tipoAccion==2" class="btn btn-primary" @click="actualizarCategoria()">Actualizar</button>
                     </div>
                 </div>
                 <!-- /.modal-content -->
@@ -144,16 +135,15 @@
     export default {
         data (){
             return{
-                alumno_id: 0,
+                categoria_id: 0,
                 nombre : '',
-                numero_control : '',
-                email : '',
-                arrayAlumno : [],
+                descripcion : '',
+                arrayCategoria : [],
                 modal : 0,
                 tituloModal : '',
                 tipoAccion : 0,
-                errorAlumno : 0,
-                errorMostrarMsjAlumno : [],
+                errorCategoria : 0,
+                errorMostrarMsjCategoria : [],
                 pagination : {
                     'total' : 0,
                     'current_page' : 0,
@@ -202,14 +192,14 @@
         methods : {
 
             
-            listarAlumno (page, buscar, criterio){
-                //'alumno' es la route que nos regresa los alumnos
+            listarCategoria (page, buscar, criterio){
+                //'categoria' es la route que nos regresa las categorias
                 let me = this;
-                var url = '/alumno?page=' + page + '&buscar=' + buscar + '&criterio=' + criterio;
+                var url = '/categoria?page=' + page + '&buscar=' + buscar + '&criterio=' + criterio;
                 axios.get(url).then(function (response) {
                     // handle success
                     var respuesta = response.data;
-                    me.arrayAlumno = respuesta.alumnos.data;
+                    me.arrayCategoria = respuesta.categorias.data;
                     me.pagination = respuesta.pagination;
                     console.log(response);
                 })
@@ -226,25 +216,24 @@
                 //Actualiza la pagina actual
                 me.pagination.current_page = page;
                 //Envia la peticion para visualizar la data de esa pagina
-                me.listarAlumno(page, buscar, criterio);
+                me.listarCategoria(page, buscar, criterio);
             },
 
 
-            registrarAlumno(){
+            registrarCategoria(){
 
-                if(this.validarAlumno()){
+                if(this.validarCategoria()){
                     return;
                 }
 
                 let me = this;
-                //esta ruta hace referencia a la funcion store del AlumnoController
-                axios.post('/alumno/registrar',{
-                    'numero_control' : this.numero_control,
+                //esta ruta hace referencia a la funcion store del CategoriaController
+                axios.post('/categoria/registrar',{
                     'nombre' : this.nombre,
-                    'email' : this.email
+                    'descripcion' : this.descripcion
                 }).then(function(response) {
                     me.cerrarModal();
-                    me.listarAlumno(1, '', 'nombre');
+                    me.listarCategoria(1, '', 'nombre');
                 }).catch(function(error){
                     console.log(error);
                 });           
@@ -252,22 +241,21 @@
 
 
 
-            actualizarAlumno(){
+            actualizarCategoria(){
 
-               if (this.validarAlumno()){
+               if (this.validarCategoria()){
                     return;
                 }
                 
                 let me = this;
 
-                axios.put('/alumno/actualizar',{
-                    'numero_control': this.numero_control,
+                axios.put('/categoria/actualizar',{
                     'nombre': this.nombre,
-                    'email' :this.email,
-                    'id': this.alumno_id
+                    'descripcion': this.descripcion,
+                    'id': this.categoria_id
                 }).then(function (response) {
                     me.cerrarModal();
-                    me.listarAlumno(1, '', 'nombre');
+                    me.listarCategoria(1, '', 'nombre');
                 }).catch(function (error) {
                     console.log(error);
                 });
@@ -277,15 +265,14 @@
 
             cerrarModal(){
                 this.modal=0;
-                this.tituloModal = '';
-                this.numero_control = '';
-                this.nombre = '';
-                this.email = '';
+                this.tituloModal='';
+                this.nombre='';
+                this.descripcion='';
             },
         
 
 
-            desactivarAlumno(id){
+            desactivarCategoria(id){
                 const swalWithBootstrapButtons = Swal.mixin({
                     customClass: {
                         confirmButton: 'btn btn-success',
@@ -306,10 +293,10 @@
 
                         let me = this;
 
-                        axios.put('/alumno/desactivar',{
+                        axios.put('/categoria/desactivar',{
                             'id': id
                         }).then(function (response) {
-                            me.listarAlumno(1, '', 'nombre');
+                            me.listarCategoria(1, '', 'nombre');
                             swalWithBootstrapButtons.fire(
                                 'Desactivado!',
                                 'El registro ha sido desactivado con éxito.',
@@ -331,7 +318,7 @@
 
 
 
-            activarAlumno(id){
+            activarCategoria(id){
                 const swalWithBootstrapButtons = Swal.mixin({
                     customClass: {
                         confirmButton: 'btn btn-success',
@@ -352,10 +339,10 @@
 
                         let me = this;
 
-                        axios.put('/alumno/activar',{
+                        axios.put('/categoria/activar',{
                             'id': id
                         }).then(function (response) {
-                            me.listarAlumno(1, '', 'nombre');
+                            me.listarCategoria(1, '', 'nombre');
                             swalWithBootstrapButtons.fire(
                                 'Activado!',
                                 'El registro ha sido activado con éxito.',
@@ -377,32 +364,31 @@
 
 
 
-            validarAlumno(){
-                this.errorAlumno = 0;
-                this.errorMostrarMsjAlumno = [];
+            validarCategoria(){
+                this.errorCategoria = 0;
+                this.errorMostrarMsjCategoria = [];
 
                 //Si el nombre esta vacio pushamos el mensaje de error
-                if(!this.nombre)this.errorMostrarMsjAlumno.push("El nombre de la categoría no puedo estar vacio.");
+                if(!this.nombre)this.errorMostrarMsjCategoria.push("El nombre de la categoría no puedo estar vacio.");
 
-                if(this.errorMostrarMsjAlumno.length) this.errorAlumno = 1;
+                if(this.errorMostrarMsjCategoria.length) this.errorCategoria = 1;
 
-                return this.errorAlumno;
+                return this.errorCategoria;
             },
 
 
 
             abrirModal(modelo, accion, data = []){
                 switch(modelo){
-                    case "alumno":
+                    case "categoria":
                     {
                         switch(accion){
                             case 'registrar':
                             {
                                 this.modal = 1;
-                                this.tituloModal = 'Registrar Alumno';
-                                this.numero_control = '';
+                                this.tituloModal = 'Registrar Categoria';
                                 this.nombre = '';
-                                this.email = '';
+                                this.descripcion = '';
                                 this.tipoAccion = 1;
                                 break;
                             }
@@ -413,10 +399,9 @@
                                 this.modal = 1;
                                 this.tituloModal = 'Actualizar categoría';
                                 this.tipoAccion = 2;
-                                this.alumno_id = data['id'];
-                                this.numero_control = data['numero_control'];
+                                this.categoria_id = data['id'];
                                 this.nombre = data['nombre'];
-                                this.email = data['email'];
+                                this.descripcion = data['descripcion'];
                                 break;
                             }
                         }
@@ -428,7 +413,7 @@
 
 
         mounted() {
-            this.listarAlumno(1, this.buscar, this.criterio);
+            this.listarCategoria(1, this.buscar, this.criterio);
         }
     }
 </script>
