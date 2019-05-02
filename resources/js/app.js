@@ -22,7 +22,7 @@ window.Vue = require('vue');
 
 //Cada vez que se modifique este archivo 'npm run dev' debe de ejecutarse
 Vue.component('alumno', require('./components/Alumno.vue').default);
-Vue.component('articulo', require('./components/Articulo.vue').default);
+Vue.component('maestro', require('./components/Maestro.vue').default);
 
 /**
  * Next, we will create a fresh Vue application instance and attach it to

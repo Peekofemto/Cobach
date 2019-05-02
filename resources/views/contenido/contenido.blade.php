@@ -10,11 +10,23 @@
     </template>
     
     <template v-if="menu==2">
-            <h1>aun no hay nada aqui</h1>
+            <Maestro></Maestro>
     </template>
 
-    <template v-if="menu==3">
-            <h1>Contenido del menú 3</h1>
+    <template v-if="menu==3">  
+        <div class="container">
+                <form method="post" action="{{url('/alumno/import')}}" enctype="multipart/form-data" class="form-horizontal">
+                    {{csrf_field()}}
+                    <div class="form-group row">
+                        <label class="col-md-3 form-control-label" for="text-input">Importar Excel <i class="fa fa-file-excel-o"></i></label>
+                        <div class="col-md-9">
+                            <input type="file" name="excel">
+                            
+                            <input type="submit" value="Enviar" style="padding: 10px 20px;">
+                        </div>         
+                    </div>
+                </form>
+        </div>      
     </template>
 
     <template v-if="menu==4">

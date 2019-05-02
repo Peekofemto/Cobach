@@ -7,11 +7,10 @@
             <!-- Ejemplo de tabla Listado -->
             <div class="card">
                 <div class="card-header">
-                    <i class="fa fa-align-justify"></i> Alumnos
-                    <button type="button" @click="abrirModal('alumno','registrar')" class="btn btn-secondary">
+                    <i class="fa fa-align-justify"></i> Maestros
+                    <button type="button" @click="abrirModal('maestro','registrar')" class="btn btn-secondary">
                         <i class="icon-plus"></i>&nbsp;Nuevo
                     </button>
-                    
                 </div>
                 <div class="card-body">
                     <div class="form-group row">
@@ -21,8 +20,8 @@
                                 <option value="numero_control">Número de control</option>
                                 <option value="nombre">Nombre</option>
                                 </select>
-                                <input type="text" v-model="buscar" @keyup.enter="listarAlumno(1, buscar, criterio)" class="form-control" placeholder="Texto a buscar">
-                                <button type="submit" @click="listarAlumno(1, buscar, criterio)" class="btn btn-primary"><i class="fa fa-search"></i> Buscar</button>
+                                <input type="text" v-model="buscar" @keyup.enter="listarMaestro(1, buscar, criterio)" class="form-control" placeholder="Texto a buscar">
+                                <button type="submit" @click="listarMaestro(1, buscar, criterio)" class="btn btn-primary"><i class="fa fa-search"></i> Buscar</button>
                             </div>
                         </div>
                     </div>
@@ -37,27 +36,27 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <tr v-for="alumno in arrayAlumno" :key="alumno.id">
+                            <tr v-for="maestro in arrayMaestro" :key="maestro.id">
                                 <td>
-                                    <button type="button" @click="abrirModal('alumno','actualizar',alumno)" class="btn btn-warning btn-sm">
+                                    <button type="button" @click="abrirModal('maestro','actualizar',maestro)" class="btn btn-warning btn-sm">
                                     <i class="icon-pencil"></i>
                                     </button> &nbsp;
-                                        <template v-if="alumno.condicion">
-                                            <button type="button" class="btn btn-danger btn-sm" @click="desactivarAlumno(alumno.id)">
+                                        <template v-if="maestro.condicion">
+                                            <button type="button" class="btn btn-danger btn-sm" @click="desactivarMaestro(maestro.id)">
                                                 <i class="icon-trash"></i>
                                             </button>
                                         </template>
                                         <template v-else>
-                                            <button type="button" class="btn btn-info btn-sm" @click="activarAlumno(alumno.id)">
+                                            <button type="button" class="btn btn-info btn-sm" @click="activarMaestro(maestro.id)">
                                                 <i class="icon-check"></i>
                                             </button>
                                         </template>
                                 </td>
-                                <td v-text="alumno.nombre"></td>
-                                <td v-text="alumno.numero_control"></td>
-                                <td v-text="alumno.email"></td>
+                                <td v-text="maestro.nombre"></td>
+                                <td v-text="maestro.numero_control"></td>
+                                <td v-text="maestro.email"></td>
                                 <td>
-                                    <div v-if="alumno.condicion" >
+                                    <div v-if="maestro.condicion" >
                                     <span class="badge badge-success">Activo</span>
                                     </div>
 
@@ -69,7 +68,6 @@
                             
                         </tbody>
                     </table>
-
                     <nav>
                         <ul class="pagination">
                             <li class="page-item" v-if="pagination.current_page > 1">
@@ -98,7 +96,7 @@
                         </button>
                     </div>
                     <div class="modal-body">
-                        <form action="#" method="POST" enctype="multipart/form-data" class="form-horizontal">
+                        <form action="" method="post" enctype="multipart/form-data" class="form-horizontal">
                             <div class="form-group row">
                                 <label class="col-md-3 form-control-label" for="text-input">Número de control*</label>
                                 <div class="col-md-9">
@@ -109,7 +107,7 @@
                             <div class="form-group row">
                                 <label class="col-md-3 form-control-label" for="text-input">Nombre</label>
                                 <div class="col-md-9">
-                                    <input type="text" v-model="nombre" class="form-control" placeholder="Nombre del alumno">
+                                    <input type="text" v-model="nombre" class="form-control" placeholder="Nombre del maestro">
                                     
                                 </div>
                             </div>
@@ -119,17 +117,17 @@
                                     <input type="email" v-model="email" class="form-control" placeholder="Ingrese email">
                                 </div>
                             </div>
-                            <div v-show="errorAlumno" class="form-group row div-error">
+                            <div v-show="errorMaestro" class="form-group row div-error">
                                 <div class="text-center text-error">
-                                    <div v-for="error in errorMostrarMsjAlumno" :key="error" v-text="error"></div>
+                                    <div v-for="error in errorMostrarMsjMaestro" :key="error" v-text="error"></div>
                                 </div>
                             </div>
                         </form>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" @click="cerrarModal()">Cerrar</button>
-                        <button type="button" v-if="tipoAccion==1" class="btn btn-primary" @click="registrarAlumno()">Guardar</button>
-                        <button type="button" v-if="tipoAccion==2" class="btn btn-primary" @click="actualizarAlumno()">Actualizar</button>
+                        <button type="button" v-if="tipoAccion==1" class="btn btn-primary" @click="registrarMaestro()">Guardar</button>
+                        <button type="button" v-if="tipoAccion==2" class="btn btn-primary" @click="actualizarMaestro()">Actualizar</button>
                     </div>
                 </div>
                 <!-- /.modal-content -->
@@ -146,16 +144,16 @@
     export default {
         data (){
             return{
-                alumno_id: 0,
+                maestro_id: 0,
                 nombre : '',
                 numero_control : '',
                 email : '',
-                arrayAlumno : [],
+                arrayMaestro : [],
                 modal : 0,
                 tituloModal : '',
                 tipoAccion : 0,
-                errorAlumno : 0,
-                errorMostrarMsjAlumno : [],
+                errorMaestro : 0,
+                errorMostrarMsjMaestro : [],
                 pagination : {
                     'total' : 0,
                     'current_page' : 0,
@@ -167,7 +165,6 @@
                 offset : 3,
                 criterio : 'nombre',
                 buscar : ''
-
             }
         },
         computed:{
@@ -205,14 +202,14 @@
         methods : {
 
             
-            listarAlumno (page, buscar, criterio){
-                //'alumno' es la route que nos regresa los alumnos
+            listarMaestro (page, buscar, criterio){
+                //'maestro' es la route que nos regresa los maestros
                 let me = this;
-                var url = '/alumno?page=' + page + '&buscar=' + buscar + '&criterio=' + criterio;
+                var url = '/maestro?page=' + page + '&buscar=' + buscar + '&criterio=' + criterio;
                 axios.get(url).then(function (response) {
                     // handle success
                     var respuesta = response.data;
-                    me.arrayAlumno = respuesta.alumnos.data;
+                    me.arrayMaestro = respuesta.maestros.data;
                     me.pagination = respuesta.pagination;
                     console.log(response);
                 })
@@ -229,25 +226,25 @@
                 //Actualiza la pagina actual
                 me.pagination.current_page = page;
                 //Envia la peticion para visualizar la data de esa pagina
-                me.listarAlumno(page, buscar, criterio);
+                me.listarMaestro(page, buscar, criterio);
             },
 
 
-            registrarAlumno(){
+            registrarMaestro(){
 
-                if(this.validarAlumno()){
+                if(this.validarMaestro()){
                     return;
                 }
 
                 let me = this;
-                //esta ruta hace referencia a la funcion store del AlumnoController
-                axios.post('/alumno/registrar',{
+                //esta ruta hace referencia a la funcion store del MaestroController
+                axios.post('/maestro/registrar',{
                     'numero_control' : this.numero_control,
                     'nombre' : this.nombre,
                     'email' : this.email
                 }).then(function(response) {
                     me.cerrarModal();
-                    me.listarAlumno(1, '', 'nombre');
+                    me.listarMaestro(1, '', 'nombre');
                 }).catch(function(error){
                     console.log(error);
                 });           
@@ -255,22 +252,22 @@
 
 
 
-            actualizarAlumno(){
+            actualizarMaestro(){
 
-               if (this.validarAlumno()){
+               if (this.validarMaestro()){
                     return;
                 }
                 
                 let me = this;
 
-                axios.put('/alumno/actualizar',{
+                axios.put('/maestro/actualizar',{
                     'numero_control': this.numero_control,
                     'nombre': this.nombre,
                     'email' :this.email,
-                    'id': this.alumno_id
+                    'id': this.maestro_id
                 }).then(function (response) {
                     me.cerrarModal();
-                    me.listarAlumno(1, '', 'nombre');
+                    me.listarMaestro(1, '', 'nombre');
                 }).catch(function (error) {
                     console.log(error);
                 });
@@ -288,7 +285,7 @@
         
 
 
-            desactivarAlumno(id){
+            desactivarMaestro(id){
                 const swalWithBootstrapButtons = Swal.mixin({
                     customClass: {
                         confirmButton: 'btn btn-success',
@@ -309,10 +306,10 @@
 
                         let me = this;
 
-                        axios.put('/alumno/desactivar',{
+                        axios.put('/maestro/desactivar',{
                             'id': id
                         }).then(function (response) {
-                            me.listarAlumno(1, '', 'nombre');
+                            me.listarMaestro(1, '', 'nombre');
                             swalWithBootstrapButtons.fire(
                                 'Desactivado!',
                                 'El registro ha sido desactivado con éxito.',
@@ -334,7 +331,7 @@
 
 
 
-            activarAlumno(id){
+            activarMaestro(id){
                 const swalWithBootstrapButtons = Swal.mixin({
                     customClass: {
                         confirmButton: 'btn btn-success',
@@ -355,10 +352,10 @@
 
                         let me = this;
 
-                        axios.put('/alumno/activar',{
+                        axios.put('/maestro/activar',{
                             'id': id
                         }).then(function (response) {
-                            me.listarAlumno(1, '', 'nombre');
+                            me.listarMaestro(1, '', 'nombre');
                             swalWithBootstrapButtons.fire(
                                 'Activado!',
                                 'El registro ha sido activado con éxito.',
@@ -380,29 +377,29 @@
 
 
 
-            validarAlumno(){
-                this.errorAlumno = 0;
-                this.errorMostrarMsjAlumno = [];
+            validarMaestro(){
+                this.errorMaestro = 0;
+                this.errorMostrarMsjMaestro = [];
 
                 //Si el nombre esta vacio pushamos el mensaje de error
-                if(!this.nombre)this.errorMostrarMsjAlumno.push("El nombre de la categoría no puedo estar vacio.");
+                if(!this.nombre)this.errorMostrarMsjMaestro.push("El nombre de la categoría no puedo estar vacio.");
 
-                if(this.errorMostrarMsjAlumno.length) this.errorAlumno = 1;
+                if(this.errorMostrarMsjMaestro.length) this.errorMaestro = 1;
 
-                return this.errorAlumno;
+                return this.errorMaestro;
             },
 
 
 
             abrirModal(modelo, accion, data = []){
                 switch(modelo){
-                    case "alumno":
+                    case "maestro":
                     {
                         switch(accion){
                             case 'registrar':
                             {
                                 this.modal = 1;
-                                this.tituloModal = 'Registrar Alumno';
+                                this.tituloModal = 'Registrar Maestro';
                                 this.numero_control = '';
                                 this.nombre = '';
                                 this.email = '';
@@ -416,7 +413,7 @@
                                 this.modal = 1;
                                 this.tituloModal = 'Actualizar categoría';
                                 this.tipoAccion = 2;
-                                this.alumno_id = data['id'];
+                                this.maestro_id = data['id'];
                                 this.numero_control = data['numero_control'];
                                 this.nombre = data['nombre'];
                                 this.email = data['email'];
@@ -425,28 +422,13 @@
                         }
                     }
                 }
-            },
-
-
-
-            cargarDatosExcel(){
-                //'alumno' es la route que nos regresa los alumnos
-                let me = this;
-                var url = '/alumno/import';
-                axios.post(url).then(function (response) {
-
-                })
-                .catch(function (error) {
-                    // handle error
-                    console.log(error);
-                });
             }
         },
 
 
 
         mounted() {
-            this.listarAlumno(1, this.buscar, this.criterio);
+            this.listarMaestro(1, this.buscar, this.criterio);
         }
     }
 </script>

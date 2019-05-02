@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Alumno;
+use Maatwebsite\Excel\Facades\Excel;
 class AlumnoController extends Controller
 {
         /**
@@ -21,10 +22,10 @@ class AlumnoController extends Controller
 
         if ($buscar=='') {
             //Creando un array de tipo Alumno(model)
-            $alumnos = Alumno::orderBy('id', 'desc')->paginate(4);
+            $alumnos = Alumno::orderBy('id', 'desc')->paginate(20);
         }
         else {
-            $alumnos = Alumno::where($criterio, 'like', '%' . $buscar . '%' )->orderBy('id', 'desc')->paginate(4);
+            $alumnos = Alumno::where($criterio, 'like', '%' . $buscar . '%' )->orderBy('id', 'desc')->paginate(20);
         }
 
         return[
@@ -95,5 +96,27 @@ class AlumnoController extends Controller
         $alumno = Alumno::findOrFail($request->id);
         $alumno->condicion = '1';
         $alumno->save();
+    }
+
+    public function import(Request $request){
+        \Excel::load($request->excel, function($reader) {
+ 
+            $excel = $reader->get();
+     
+            // iteracción
+            $reader->each(function($row) {
+     
+                $alumno = new Alumno;
+                $alumno->numero_control = $row->numero_control;
+                $alumno->nombre = $row->nombre;
+                $alumno->email = $row->email;
+                $alumno->condicion = '1';
+                $alumno->save();
+     
+            });
+        
+        });
+     
+        return back();
     }
 }
